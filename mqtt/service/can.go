@@ -56,6 +56,7 @@ var nodeIDMap = map[byte]string{
 	0x28: "sam20",
 	0x29: "lv_dc_dc",
 	0x30: "gps",
+	0x40: "assetto-corsa",
 }
 
 func PublishData(canID uint32, nodeID uint8, messageID uint16, targetID uint8, data []byte) {
