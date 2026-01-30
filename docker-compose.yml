@@ -1,4 +1,4 @@
-name: gr25_tcm
+name: gr26_tcm
 
 services:
   db:
@@ -9,8 +9,8 @@ services:
       - "5432:5432"
     environment:
       POSTGRES_DB: mapache
-      POSTGRES_USER: gr25
-      POSTGRES_PASSWORD: gr25
+      POSTGRES_USER: gr26
+      POSTGRES_PASSWORD: gr26
 
 volumes:
   pgdata:

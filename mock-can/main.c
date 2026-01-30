@@ -28,7 +28,7 @@ void createMockCANMessage(struct CAN *frame) {
     // uint8_t target_id = rand() % 0xFF;    // 1 byte for target ID
 
     uint8_t gr_id = 0x02;
-    uint16_t msg_id = 0x003;
+    uint16_t msg_id = 0x030;
     uint8_t target_id = 0xFF;
     
     // Combine components into final CAN ID
@@ -38,8 +38,8 @@ void createMockCANMessage(struct CAN *frame) {
     // Random bus number (0 or 1)
     frame->combined.split.bus = rand() % 2;
     
-    // Random length between 1 and 64 bytes
-    frame->combined.split.length = (rand() % 64) + 1;
+    // Fixed length of 8 bytes
+    frame->combined.split.length = 6;
     
     // Fill data with random values
     for (int i = 0; i < frame->combined.split.length; i++) {
