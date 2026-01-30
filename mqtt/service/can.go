@@ -69,7 +69,7 @@ func PublishData(canID uint32, nodeID uint8, messageID uint16, targetID uint8, d
 		target = "unknown"
 	}
 
-	topic := fmt.Sprintf("gr25/%s/%s/0x%03x", config.VehicleID, source, messageID)
+	topic := fmt.Sprintf("gr26/%s/%s/0x%03x", config.VehicleID, source, messageID)
 	timestamp := uint64(time.Now().UnixMicro())
 
 	// Queue the database write

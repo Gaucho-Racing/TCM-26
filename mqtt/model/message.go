@@ -11,5 +11,5 @@ type Gr25Message struct {
 }
 
 func (Gr25Message) TableName() string {
-	return "gr25_message"
+	return "gr26_message"
 }
