@@ -12,6 +12,8 @@ sock.bind((UDP_IP, UDP_PORT))
 #####
 
 
+# TODO: ADD CAR COORDINATES TO THE MESSAGES
+
 asm = accSharedMemory()
 
 print("Listening for Telemetry...")

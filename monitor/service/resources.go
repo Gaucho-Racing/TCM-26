@@ -44,7 +44,7 @@ func QueryResourceMetrics() (model.ResourceMetrics, error) {
 }
 
 func PublishResources(metrics model.ResourceMetrics) {
-	topic := fmt.Sprintf("gr26/%s/tcm/0x02A", config.VehicleID)
+	topic := fmt.Sprintf("gr25/%s/tcm/0x02A", config.VehicleID)
 	micros := time.Now().UnixMicro()
 	microsBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(microsBytes, uint64(micros))

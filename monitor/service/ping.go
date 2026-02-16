@@ -39,7 +39,7 @@ func InitializePings() {
 }
 
 func SubscribePong() {
-	topic := fmt.Sprintf("gr26/%s/tcm/pong", config.VehicleID)
+	topic := fmt.Sprintf("gr25/%s/tcm/pong", config.VehicleID)
 	mqtt.Subscribe(topic, func(client mq.Client, msg mq.Message) {
 		ping := binary.BigEndian.Uint64(msg.Payload()[:8])
 		pong := binary.BigEndian.Uint64(msg.Payload()[8:])
@@ -53,7 +53,7 @@ func SubscribePong() {
 }
 
 func PublishPing() {
-	topic := fmt.Sprintf("gr26/%s/tcm/ping", config.VehicleID)
+	topic := fmt.Sprintf("gr25/%s/tcm/ping", config.VehicleID)
 	micros := time.Now().UnixMicro()
 	go CreatePing(int(micros))
 	microsBytes := make([]byte, 8)
