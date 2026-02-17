@@ -25,7 +25,6 @@
         "request": "launch",
         "type": "cortex-debug",
         "servertype": "openocd",
-        "console": "internalConsole",
         "configFiles": ["interface/stlink.cfg", "target/stm32g4x.cfg"],
         "searchDir": [],
         "preLaunchTask": "CMake: build",
