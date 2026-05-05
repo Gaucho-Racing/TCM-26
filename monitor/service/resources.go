@@ -33,18 +33,18 @@ func InitializeResourceQuery() {
 func QueryResourceMetrics() (model.ResourceMetrics, error) {
 	out, err := exec.Command("python3", "jetson-stats.py").Output()
 	if err != nil {
-		utils.SugarLogger.Errorf("Failed to run jetson-stats.py: %v", err)
+		return model.ResourceMetrics{}, fmt.Errorf("failed to run jetson-stats.py: %w", err)
 	}
 
 	var metrics model.ResourceMetrics
 	if err := json.Unmarshal(out, &metrics); err != nil {
-		utils.SugarLogger.Errorf("Failed to parse JSON: %v", err)
+		return model.ResourceMetrics{}, fmt.Errorf("failed to parse JSON: %w", err)
 	}
 	return metrics, nil
 }
 
 func PublishResources(metrics model.ResourceMetrics) {
-	topic := fmt.Sprintf("gr25/%s/tcm/0x02A", config.VehicleID)
+	topic := fmt.Sprintf("gr26/%s/tcm/0x02A", config.VehicleID)
 	micros := time.Now().UnixMicro()
 	microsBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(microsBytes, uint64(micros))

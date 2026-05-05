@@ -19,11 +19,11 @@ CircularBuffer *cb = NULL;
 
 struct CAN{
     union{
-      uint16_t buffer[35];
+      uint16_t buffer[36];
       struct{
         uint32_t ID;
         uint8_t bus;
-        uint8_t length;
+        uint16_t length;
         uint8_t data[64];
       }split;
     }combined;
