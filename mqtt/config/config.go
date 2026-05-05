@@ -6,7 +6,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
-var Version = "1.5.4"
+var Version = "2.0.0"
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 
@@ -30,3 +30,5 @@ var CANPort = os.Getenv("CAN_PORT")
 var LastSucessfulPublish = cmap.ConcurrentMap[string, uint64]{}
 var PublishInterval = os.Getenv("PUBLISH_INTERVAL")
 var PublishIntervalInt int
+
+var PingInterval = os.Getenv("PING_INTERVAL")

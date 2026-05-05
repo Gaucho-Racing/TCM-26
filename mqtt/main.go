@@ -18,5 +18,9 @@ func main() {
 	database.InitializeMap()
 	service.InitDBQueue()
 	mqtt.InitializeMQTT()
+
+	service.InitializePings()
+	service.InitializeResourceQuery()
+
 	service.ListenCAN(config.CANPort)
 }

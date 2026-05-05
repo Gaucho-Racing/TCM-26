@@ -38,7 +38,7 @@ func InitializeDB() error {
 
 	utils.SugarLogger.Infoln("[DB] Connected to database")
 
-	if err := db.AutoMigrate(&model.Gr25Message{}); err != nil {
+	if err := db.AutoMigrate(&model.Gr25Message{}, &model.Ping{}); err != nil {
 		utils.SugarLogger.Errorln("[DB] AutoMigration failed:", err)
 		return err
 	}

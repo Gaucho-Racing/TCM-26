@@ -1,16 +1,57 @@
-name: gr25_tcm
+name: tcm26
 
 services:
-  db:
-    image: postgres:17-alpine
+  mqtt:
+    build:
+      context: .
+      dockerfile: mqtt/Dockerfile.dev
+    container_name: mqtt
+    restart: unless-stopped
+    depends_on:
+      - db
+      - nanomq
+    ports:
+      - "8000:8000/udp"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - ./mqtt:/app/mqtt
+      - mqtt_go_cache:/go
+    environment:
+      ENV: "DEV"
+      VEHICLE_ID: ${VEHICLE_ID:-GR26}
+      VEHICLE_UPLOAD_KEY: ${VEHICLE_UPLOAD_KEY:-0}
+      DATABASE_HOST: ${DATABASE_HOST:-db}
+      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      DATABASE_NAME: ${DATABASE_NAME:-tcm26}
+      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
+      MQTT_HOST: "nanomq"
+      MQTT_PORT: "1883"
+      MQTT_USER: ""
+      MQTT_PASSWORD: ""
+      CAN_PORT: "8000"
+      PUBLISH_INTERVAL: "100"
+      PING_INTERVAL: "5000"
+
+  nanomq:
+    image: emqx/nanomq:latest
+    container_name: nanomq
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+
+  db:
+    image: postgres:18-alpine
+    container_name: db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-password}
+      POSTGRES_DB: ${DATABASE_NAME:-tcm26}
     ports:
       - "5432:5432"
-    environment:
-      POSTGRES_DB: mapache
-      POSTGRES_USER: gr25
-      POSTGRES_PASSWORD: gr25
+    volumes:
+      - pgdata:/var/lib/postgresql/data
 
 volumes:
   pgdata:
+  mqtt_go_cache:
