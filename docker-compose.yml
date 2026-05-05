@@ -12,6 +12,11 @@ services:
       - nanomq
     ports:
       - "8000:8000/udp"
+    extra_hosts:
+      # Lets the container reach a broker running on the docker host (e.g. the
+      # Mapache stack's NanoMQ on port 1883). Linux needs this explicitly;
+      # Docker Desktop on macOS/Windows resolves host.docker.internal natively.
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./mqtt:/app/mqtt
       - mqtt_go_cache:/go
@@ -24,10 +29,14 @@ services:
       DATABASE_NAME: ${DATABASE_NAME:-tcm26}
       DATABASE_USER: ${DATABASE_USER:-postgres}
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
-      MQTT_HOST: "nanomq"
-      MQTT_PORT: "1883"
-      MQTT_USER: ""
-      MQTT_PASSWORD: ""
+      LOCAL_MQTT_HOST: ${LOCAL_MQTT_HOST:-nanomq}
+      LOCAL_MQTT_PORT: ${LOCAL_MQTT_PORT:-1883}
+      LOCAL_MQTT_USER: ${LOCAL_MQTT_USER:-}
+      LOCAL_MQTT_PASSWORD: ${LOCAL_MQTT_PASSWORD:-}
+      CLOUD_MQTT_HOST: ${CLOUD_MQTT_HOST:-}
+      CLOUD_MQTT_PORT: ${CLOUD_MQTT_PORT:-1883}
+      CLOUD_MQTT_USER: ${CLOUD_MQTT_USER:-}
+      CLOUD_MQTT_PASSWORD: ${CLOUD_MQTT_PASSWORD:-}
       CAN_PORT: "8000"
       PUBLISH_INTERVAL: "100"
       PING_INTERVAL: "5000"
@@ -37,7 +46,10 @@ services:
     container_name: nanomq
     restart: unless-stopped
     ports:
-      - "1883:1883"
+      # Use a non-default host port so the Mapache stack (also exposes 1883)
+      # can run alongside this stack without collision. Containers inside
+      # this stack still reach NanoMQ as `nanomq:1883`.
+      - "1884:1883"
 
   db:
     image: postgres:18-alpine
