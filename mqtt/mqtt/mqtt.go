@@ -88,36 +88,37 @@ func publishOne(client mq.Client, label, topic string, qos byte, retained bool, 
 	}()
 }
 
-// Subscribe subscribes on both local and cloud brokers. The handler will
-// be invoked for messages from either broker; for ping/pong this means
-// we get latency data for both connections (last write wins in the DB,
-// which is typically the cloud one since it's slower).
+// Subscribe subscribes on the cloud broker only. Messages from the local
+// broker are ignored — there's nothing useful for the relay to consume
+// locally (e.g., loopback pong RTT is sub-ms and uninformative). If the
+// cloud broker isn't configured, this is a no-op.
 func Subscribe(topic string, handler mq.MessageHandler) {
-	subscribedTopics[topic] = handler
-	subscribeOne(Client, "local", topic, handler)
-	if CloudClient != nil {
-		subscribeOne(CloudClient, "cloud", topic, handler)
-	}
-}
-
-func subscribeOne(client mq.Client, label, topic string, handler mq.MessageHandler) {
-	if token := client.Subscribe(topic, 0, handler); token.Wait() && token.Error() != nil {
-		// Not fatal — onConnect will resubscribe once the broker is reachable.
-		utils.SugarLogger.Warnf("[MQ][%s] Failed to subscribe to %s: %v", label, topic, token.Error())
+	if CloudClient == nil {
+		utils.SugarLogger.Warnf("[MQ][cloud] Cannot subscribe to %s: CLOUD_MQTT_HOST not configured", topic)
 		return
 	}
-	utils.SugarLogger.Infof("[MQ][%s] Subscribed to topic: %s", label, topic)
+	subscribedTopics[topic] = handler
+	if token := CloudClient.Subscribe(topic, 0, handler); token.Wait() && token.Error() != nil {
+		// Not fatal — onConnect will resubscribe once the broker is reachable.
+		utils.SugarLogger.Warnf("[MQ][cloud] Failed to subscribe to %s: %v", topic, token.Error())
+		return
+	}
+	utils.SugarLogger.Infof("[MQ][cloud] Subscribed to topic: %s", topic)
 }
 
 func onConnectFn(label string) mq.OnConnectHandler {
 	return func(client mq.Client) {
 		utils.SugarLogger.Infof("[MQ][%s] Connected to broker", label)
+		// Subscriptions live on the cloud client only.
+		if label != "cloud" {
+			return
+		}
 		for topic, handler := range subscribedTopics {
 			if token := client.Subscribe(topic, 0, handler); token.Wait() && token.Error() != nil {
-				utils.SugarLogger.Errorf("[MQ][%s] Failed to resubscribe to %s: %v", label, topic, token.Error())
+				utils.SugarLogger.Errorf("[MQ][cloud] Failed to resubscribe to %s: %v", topic, token.Error())
 				continue
 			}
-			utils.SugarLogger.Infof("[MQ][%s] Resubscribed to topic: %s", label, topic)
+			utils.SugarLogger.Infof("[MQ][cloud] Resubscribed to topic: %s", topic)
 		}
 	}
 }
