@@ -88,30 +88,36 @@ func publishOne(client mq.Client, label, topic string, qos byte, retained bool, 
 	}()
 }
 
-// Subscribe subscribes on the local client only. Subscriptions on the
-// cloud broker are not supported — this service only publishes to cloud.
+// Subscribe subscribes on both local and cloud brokers. The handler will
+// be invoked for messages from either broker; for ping/pong this means
+// we get latency data for both connections (last write wins in the DB,
+// which is typically the cloud one since it's slower).
 func Subscribe(topic string, handler mq.MessageHandler) {
-	if token := Client.Subscribe(topic, 0, handler); token.Wait() && token.Error() != nil {
-		utils.SugarLogger.Errorln("[MQ][local] Failed to subscribe to topic:", topic, token.Error())
+	subscribedTopics[topic] = handler
+	subscribeOne(Client, "local", topic, handler)
+	if CloudClient != nil {
+		subscribeOne(CloudClient, "cloud", topic, handler)
+	}
+}
+
+func subscribeOne(client mq.Client, label, topic string, handler mq.MessageHandler) {
+	if token := client.Subscribe(topic, 0, handler); token.Wait() && token.Error() != nil {
+		// Not fatal — onConnect will resubscribe once the broker is reachable.
+		utils.SugarLogger.Warnf("[MQ][%s] Failed to subscribe to %s: %v", label, topic, token.Error())
 		return
 	}
-	subscribedTopics[topic] = handler
-	utils.SugarLogger.Infoln("[MQ][local] Subscribed to topic:", topic)
+	utils.SugarLogger.Infof("[MQ][%s] Subscribed to topic: %s", label, topic)
 }
 
 func onConnectFn(label string) mq.OnConnectHandler {
 	return func(client mq.Client) {
 		utils.SugarLogger.Infof("[MQ][%s] Connected to broker", label)
-		// Only the local client tracks subscriptions.
-		if label != "local" {
-			return
-		}
 		for topic, handler := range subscribedTopics {
 			if token := client.Subscribe(topic, 0, handler); token.Wait() && token.Error() != nil {
-				utils.SugarLogger.Errorln("[MQ][local] Failed to resubscribe to topic:", topic, token.Error())
+				utils.SugarLogger.Errorf("[MQ][%s] Failed to resubscribe to %s: %v", label, topic, token.Error())
 				continue
 			}
-			utils.SugarLogger.Infoln("[MQ][local] Resubscribed to topic:", topic)
+			utils.SugarLogger.Infof("[MQ][%s] Resubscribed to topic: %s", label, topic)
 		}
 	}
 }
