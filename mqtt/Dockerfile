@@ -29,6 +29,6 @@ COPY --from=builder /tcm_mqtt /tcm_mqtt
 COPY scripts/jetson-stats.py /jetson-stats.py
 
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
-ENV TZ=America/Los_Angeles
+ENV TZ=UTC
 
 ENTRYPOINT ["/tcm_mqtt"]
