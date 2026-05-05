@@ -12,7 +12,7 @@ RUN go mod download
 COPY . ./
 ARG TARGETOS
 ARG TARGETARCH
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /tcm
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /tcm_mqtt
 
 ##
 ## Deploy
@@ -25,10 +25,10 @@ RUN python3 -m pip install -U jetson-stats
 
 WORKDIR /
 
-COPY --from=builder /tcm /tcm
+COPY --from=builder /tcm_mqtt /tcm_mqtt
 COPY scripts/jetson-stats.py /jetson-stats.py
 
 COPY --from=builder /usr/share/zoneinfo /usr/share/zoneinfo
 ENV TZ=America/Los_Angeles
 
-ENTRYPOINT ["/tcm"]
+ENTRYPOINT ["/tcm_mqtt"]

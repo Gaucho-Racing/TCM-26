@@ -1,7 +1,7 @@
 package utils
 
 import (
-	"tcm/config"
+	"mqtt/config"
 
 	"go.uber.org/zap"
 )

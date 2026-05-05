@@ -1,4 +1,4 @@
-module tcm
+module mqtt
 
 go 1.23.6
 

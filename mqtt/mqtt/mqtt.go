@@ -2,8 +2,8 @@ package mqtt
 
 import (
 	"fmt"
-	"tcm/config"
-	"tcm/utils"
+	"mqtt/config"
+	"mqtt/utils"
 	"time"
 
 	mq "github.com/eclipse/paho.mqtt.golang"

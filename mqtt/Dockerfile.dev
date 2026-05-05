@@ -1,0 +1,8 @@
+FROM golang:1.26-alpine
+
+RUN apk add --no-cache python3 py3-pip
+RUN go install github.com/air-verse/air@latest
+
+WORKDIR /app/mqtt
+
+CMD ["air", "-c", ".air.toml"]

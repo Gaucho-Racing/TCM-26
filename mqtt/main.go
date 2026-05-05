@@ -1,11 +1,11 @@
 package main
 
 import (
-	"tcm/config"
-	"tcm/database"
-	"tcm/mqtt"
-	"tcm/service"
-	"tcm/utils"
+	"mqtt/config"
+	"mqtt/database"
+	"mqtt/mqtt"
+	"mqtt/service"
+	"mqtt/utils"
 )
 
 func main() {
