@@ -61,13 +61,7 @@ func PublishPing() {
 	uploadKey := make([]byte, 2)
 	binary.BigEndian.PutUint16(uploadKey, config.VehicleUploadKey)
 	payload := append(microsBytes, uploadKey...)
-	token := mqtt.Client.Publish(topic, 0, false, payload)
-	timeout := token.WaitTimeout(time.Second * 10)
-	if !timeout {
-		utils.SugarLogger.Errorln("Failed to publish ping: noreply 10s")
-	} else if token.Error() != nil {
-		utils.SugarLogger.Errorln("Failed to publish ping:", token.Error())
-	}
+	mqtt.Publish(topic, 0, false, payload)
 }
 
 func CreatePing(ping int) {
