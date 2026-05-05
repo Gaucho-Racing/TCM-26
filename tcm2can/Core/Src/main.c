@@ -223,19 +223,21 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+static const uint8_t dlc_to_bytes[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64};
+
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
   struct CAN tmp = {};
   HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader_FDCAN2, tmp.combined.split.data);
   tmp.combined.split.ID = RxHeader_FDCAN2.Identifier;
-  tmp.combined.split.length = RxHeader_FDCAN2.DataLength;
+  uint32_t dlc = RxHeader_FDCAN2.DataLength;
+  tmp.combined.split.length = (dlc <= 0x0F) ? dlc_to_bytes[dlc] : 0;
   tmp.combined.split.bus = hfdcan->Instance == FDCAN1 ? 1 : 2;
   circularBufferPush(cb, tmp.combined.buffer, sizeof(tmp.combined.buffer));
 }
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
   GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
   wTransferState = TRANSFER_COMPLETE;
 }

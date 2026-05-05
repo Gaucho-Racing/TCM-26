@@ -13,49 +13,34 @@ import (
 )
 
 var nodeIDMap = map[byte]string{
-	0x00: "dti_inverter", // ???
+	0x00: "all",
 	0x01: "debugger",
 	0x02: "ecu",
-	0x03: "acu",
+	0x03: "bcu",
 	0x04: "tcm",
 	0x05: "dash_panel",
-	0x06: "steering_wheel",
-	0x07: "", // no name
-	0x08: "gr_inverter_1",
-	0x09: "gr_inverter_2",
-	0x0A: "gr_inverter_3",
-	0x0B: "gr_inverter_4",
+	0x08: "gr_inverter",
 	0x0C: "charging_sdc",
 	0x0D: "fan_controller_1",
-	0x0E: "fan_controller_1",
-	0x0F: "fan_controller_1",
-	0x10: "fan_controller_1",
-	0x11: "fan_controller_1",
-	0x12: "fan_controller_1",
-	0x13: "fan_controller_1",
-	0x14: "fan_controller_1",
-	0x15: "sam1",
-	0x16: "sam2",
-	0x17: "sam3",
-	0x18: "sam4",
-	0x19: "sam5",
-	0x1A: "sam6",
-	0x1B: "sam7",
-	0x1C: "sam8",
-	0x1D: "sam9",
-	0x1E: "sam10",
-	0x1F: "sam11",
-	0x20: "sam12",
-	0x21: "sam13",
-	0x22: "sam14",
-	0x23: "sam15",
-	0x24: "sam16",
-	0x25: "sam17",
-	0x26: "sam18",
-	0x27: "sam19",
-	0x28: "sam20",
-	0x29: "lv_dc_dc",
-	0x30: "gps",
+	0x0E: "fan_controller_2",
+	0x0F: "fan_controller_3",
+	0x10: "tire_temp_fl",
+	0x11: "tire_temp_fr",
+	0x12: "tire_temp_rl",
+	0x13: "tire_temp_rr",
+	0x14: "suspension_fl",
+	0x15: "suspension_fr",
+	0x16: "suspension_rl",
+	0x17: "suspension_rr",
+	0x18: "inboard_floor_fl",
+	0x19: "inboard_floor_fr",
+	0x1A: "inboard_floor_rl",
+	0x1B: "inboard_floor_rr",
+	0x1C: "brake_temp_fl",
+	0x1D: "brake_temp_fr",
+	0x1E: "brake_temp_rl",
+	0x1F: "brake_temp_rr",
+	0x20: "dgps",
 }
 
 func PublishData(canID uint32, nodeID uint8, messageID uint16, targetID uint8, data []byte) {
@@ -69,7 +54,7 @@ func PublishData(canID uint32, nodeID uint8, messageID uint16, targetID uint8, d
 		target = "unknown"
 	}
 
-	topic := fmt.Sprintf("gr25/%s/%s/0x%03x", config.VehicleID, source, messageID)
+	topic := fmt.Sprintf("gr26/%s/%s/0x%03x", config.VehicleID, source, messageID)
 	timestamp := uint64(time.Now().UnixMicro())
 
 	// Queue the database write
@@ -140,8 +125,8 @@ func ListenCAN(port string) {
 			utils.SugarLogger.Infof("[CAN] Received %d bytes from %s", n, remoteAddr.String())
 		}
 
-		if n < 70 {
-			utils.SugarLogger.Infof("[CAN] Invalid packet size: expected at least 70 bytes, got %d", n)
+		if n < 72 {
+			utils.SugarLogger.Infof("[CAN] Invalid packet size: expected at least 72 bytes, got %d", n)
 			continue
 		}
 
@@ -171,8 +156,15 @@ func ListenCAN(port string) {
 		}
 
 		bus := buffer[4] // unused
-		length := buffer[5]
-		payload := buffer[6 : length+6]
+		length := binary.LittleEndian.Uint16(buffer[5:7])
+		if length > 64 {
+			length = 64
+		}
+		if int(length)+7 > n {
+			utils.SugarLogger.Infof("[CAN] Payload length %d exceeds packet size %d, skipping", length, n)
+			continue
+		}
+		payload := buffer[7 : length+7]
 
 		if shouldLog {
 			utils.SugarLogger.Infof("[CAN] Bus: %d", bus)
