@@ -25,31 +25,23 @@ services:
       ENV: "DEV"
       VEHICLE_ID: ${VEHICLE_ID:-GR26}
       VEHICLE_UPLOAD_KEY: ${VEHICLE_UPLOAD_KEY:-0}
-      DATABASE_HOST: ${DATABASE_HOST:-db}
-      DATABASE_PORT: ${DATABASE_PORT:-5432}
-      DATABASE_NAME: ${DATABASE_NAME:-tcm26}
-      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: tcm26
+      DATABASE_USER: postgres
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
-      LOCAL_MQTT_HOST: ${LOCAL_MQTT_HOST:-nanomq}
-      LOCAL_MQTT_PORT: ${LOCAL_MQTT_PORT:-1883}
-      LOCAL_MQTT_USER: ${LOCAL_MQTT_USER:-}
-      LOCAL_MQTT_PASSWORD: ${LOCAL_MQTT_PASSWORD:-}
+      LOCAL_MQTT_HOST: nanomq
+      LOCAL_MQTT_PORT: "1883"
       CLOUD_MQTT_HOST: ${CLOUD_MQTT_HOST:-}
       CLOUD_MQTT_PORT: ${CLOUD_MQTT_PORT:-1883}
       CLOUD_MQTT_USER: ${CLOUD_MQTT_USER:-}
       CLOUD_MQTT_PASSWORD: ${CLOUD_MQTT_PASSWORD:-}
       CAN_PORT: "8000"
-      # Per-CAN-ID publish throttle in ms, separate for each broker:
-      # local goes fast for the on-vehicle dash, cloud stays modest so we
-      # don't roast the cellular link.
       LOCAL_PUBLISH_INTERVAL: ${LOCAL_PUBLISH_INTERVAL:-20}
       CLOUD_PUBLISH_INTERVAL: ${CLOUD_PUBLISH_INTERVAL:-100}
       PING_INTERVAL: "5000"
 
-  # Local gr26 ingest. Opt-in via `docker compose --profile dash up` once
-  # CAN deserialization is solid — otherwise it just spams errors.
   gr26:
-    profiles: ["dash"]
     image: ghcr.io/gaucho-racing/mapache/gr26:latest
     restart: unless-stopped
     depends_on:
@@ -63,14 +55,12 @@ services:
       SKIP_AUTH_CHECK: "true"
       ENABLE_SIGNAL_DB: "false"
       ENABLE_SIGNAL_WS: "true"
-      MQTT_HOST: ${LOCAL_MQTT_HOST:-nanomq}
-      MQTT_PORT: ${LOCAL_MQTT_PORT:-1883}
-      MQTT_USER: ${LOCAL_MQTT_USER:-}
-      MQTT_PASSWORD: ${LOCAL_MQTT_PASSWORD:-}
-      DATABASE_HOST: ${DATABASE_HOST:-db}
-      DATABASE_PORT: ${DATABASE_PORT:-5432}
+      MQTT_HOST: nanomq
+      MQTT_PORT: "1883"
+      DATABASE_HOST: db
+      DATABASE_PORT: "5432"
       DATABASE_NAME: gr26
-      DATABASE_USER: ${DATABASE_USER:-postgres}
+      DATABASE_USER: postgres
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
 
   nanomq:
@@ -83,15 +73,16 @@ services:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DATABASE_USER:-postgres}
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-password}
-      POSTGRES_DB: ${DATABASE_NAME:-tcm26}
+      POSTGRES_DB: tcm26
     ports:
       - "5433:5432"
     volumes:
-      # Mount the parent dir, not /var/lib/postgresql/data — pg18+ writes to
-      # a version-specific subdir (e.g. /var/lib/postgresql/18/docker).
+      # pg18+ writes to /var/lib/postgresql/<major>/docker; mount the parent.
       - pgdata:/var/lib/postgresql
+      # Creates a separate gr26 database alongside tcm26 to isolate the
+      # gr26 ingest's Ping schema from the relay's.
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
 
 volumes:
