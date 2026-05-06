@@ -12,9 +12,6 @@ services:
     ports:
       - "8000:8000/udp"
     extra_hosts:
-      # Lets the container reach a broker running on the docker host (e.g. the
-      # Mapache stack's NanoMQ on port 1883). Linux needs this explicitly;
-      # Docker Desktop on macOS/Windows resolves host.docker.internal natively.
       - "host.docker.internal:host-gateway"
     volumes:
       - ./mqtt:/app/mqtt
@@ -40,10 +37,6 @@ services:
       PUBLISH_INTERVAL: "100"
       PING_INTERVAL: "5000"
 
-  # On-vehicle gr26 ingest. Subscribes to the local NanoMQ, decodes signals,
-  # and serves them via WebSocket on :7005 for the Electron dash. Skips DB
-  # writes (ENABLE_SIGNAL_DB=false) — historical storage happens in the cloud
-  # gr26 ingest. Image is published from the Mapache repo via GH Actions.
   gr26:
     image: ghcr.io/gaucho-racing/mapache/gr26:latest
     restart: unless-stopped
@@ -51,8 +44,6 @@ services:
       - db
       - nanomq
     ports:
-      # Different port from Mapache's gr26 (7005) so both stacks can run on
-      # the same host without colliding.
       - "8001:8001"
     environment:
       ENV: "DEV"
@@ -74,16 +65,10 @@ services:
     image: emqx/nanomq:latest
     restart: unless-stopped
     ports:
-      # Use a non-default host port so the Mapache stack (also exposes 1883)
-      # can run alongside this stack without collision. Containers inside
-      # this stack still reach NanoMQ as `nanomq:1883`.
       - "1884:1883"
 
   db:
-    # Pinned to 17 — pg18 changed PGDATA to /var/lib/postgresql/18/docker
-    # which our existing volume mount at /var/lib/postgresql/data doesn't
-    # match. Bump to 18 later once we're ready to migrate the data layout.
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DATABASE_USER:-postgres}
@@ -92,10 +77,9 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      # Init script runs once on first volume creation; creates a separate
-      # `gr26` database alongside the default `tcm26` so the two services
-      # don't fight over the `ping` table schema.
+      # Mount the parent dir, not /var/lib/postgresql/data — pg18+ writes to
+      # a version-specific subdir (e.g. /var/lib/postgresql/18/docker).
+      - pgdata:/var/lib/postgresql
       - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
 
 volumes:
