@@ -39,10 +39,8 @@ echo "[dash] DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY"
 
 cd "$DASH_DIR"
 
-if [ ! -d node_modules ]; then
-  echo "[dash] node_modules missing — running npm install"
-  npm install
-fi
+echo "[dash] npm install"
+npm install
 
 if [ ! -f .env ]; then
   echo "[dash] WARN: no .env found. If signals don't show up, the"
