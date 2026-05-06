@@ -80,7 +80,10 @@ services:
       - "1884:1883"
 
   db:
-    image: postgres:18-alpine
+    # Pinned to 17 — pg18 changed PGDATA to /var/lib/postgresql/18/docker
+    # which our existing volume mount at /var/lib/postgresql/data doesn't
+    # match. Bump to 18 later once we're ready to migrate the data layout.
+    image: postgres:17-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DATABASE_USER:-postgres}
