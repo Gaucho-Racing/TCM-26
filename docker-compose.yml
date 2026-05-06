@@ -42,7 +42,10 @@ services:
       PUBLISH_INTERVAL: "100"
       PING_INTERVAL: "5000"
 
+  # Local gr26 ingest. Opt-in via `docker compose --profile dash up` once
+  # CAN deserialization is solid — otherwise it just spams errors.
   gr26:
+    profiles: ["dash"]
     image: ghcr.io/gaucho-racing/mapache/gr26:latest
     restart: unless-stopped
     depends_on:
