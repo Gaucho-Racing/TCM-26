@@ -41,7 +41,7 @@ const GROUPS: { title: string; signals: string[] }[] = [
   },
 ];
 
-export function DebugMatrix({ onClose }: { onClose: () => void }) {
+export function DebugMatrix() {
   const signals = useSignalStore((s) => s.signals);
   const messageCount = useSignalStore((s) => s.messageCount);
   const lastSignalName = useSignalStore((s) => s.lastSignalName);
@@ -62,12 +62,6 @@ export function DebugMatrix({ onClose }: { onClose: () => void }) {
             last <span className="text-neutral-300">{lastSignalName || '—'}</span>
           </span>
         </div>
-        <button
-          onClick={onClose}
-          className="rounded border border-neutral-700 px-3 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
-        >
-          press D · close
-        </button>
       </div>
       <div className="grid flex-1 grid-cols-3 gap-3 overflow-auto">
         {GROUPS.map((g) => (

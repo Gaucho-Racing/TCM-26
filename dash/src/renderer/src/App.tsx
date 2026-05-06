@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useSignals } from './hooks/useSignals';
 import { useSignal, useSignalStore } from './store/signals';
 import { aggregateCells, CELL_SIGNALS } from './lib/cells';
@@ -48,37 +47,15 @@ const SUBSCRIBED_SIGNALS = [
   ...CELL_SIGNALS,
 ] as const;
 
-// `?view=debug` deep-links to the matrix, since the Jetson kiosk usually
-// has no keyboard. The `d` keybind is for fast toggling on a dev box.
-function useDebugView(): [boolean, (v: boolean) => void] {
-  const [debug, setDebug] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return new URLSearchParams(window.location.search).get('view') === 'debug';
-  });
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === 'd' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        setDebug((d) => !d);
-      } else if (e.key === 'Escape') {
-        setDebug(false);
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
-
-  return [debug, setDebug];
-}
-
 export default function App() {
   useSignals(SUBSCRIBED_SIGNALS);
-  const [debug, setDebug] = useDebugView();
+  return <DebugMatrix />;
+}
 
-  if (debug) {
-    return <DebugMatrix onClose={() => setDebug(false)} />;
-  }
-
+// Production driver view — not currently rendered while we calibrate the
+// state machine. Swap this back into App() once the matrix is no longer
+// needed for live debugging.
+export function DriverView() {
   return (
     <div className="grid h-screen w-screen grid-cols-[1fr_1.6fr_1fr] gap-3 bg-neutral-950 p-4">
       <LeftColumn />
