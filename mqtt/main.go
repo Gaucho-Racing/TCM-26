@@ -21,6 +21,7 @@ func main() {
 
 	service.InitializePings()
 	service.InitializeResourceQuery()
+	service.InitializeTCMStatus()
 
 	service.ListenCAN(config.CANPort)
 }

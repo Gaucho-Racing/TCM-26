@@ -16,6 +16,9 @@ const SUBSCRIBED_SIGNALS = [
   'ecu_max_cell_temp',
   'ecu_ts_voltage',
   'ecu_relay_states',
+  // From the relay's TCM Status (0x029), updated every 5s.
+  'tcm_status_bits',
+  'tcm_mapache_ping',
 ] as const;
 
 export default function App() {

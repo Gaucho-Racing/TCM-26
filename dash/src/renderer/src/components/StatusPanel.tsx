@@ -1,13 +1,22 @@
 import { useSignal, useSignalStore } from '../store/signals';
 import { isSafetyOk, type SafetyKey } from '../lib/state';
 
+// TCM Status (0x029) status_bits — bit 1 means cloud broker is reachable,
+// bit 0 means a recent pong was received from the cloud.
+const TCM_STATUS_CONNECTION = 1 << 0;
+const TCM_STATUS_MQTT = 1 << 1;
+
 // Right panel: safety circuit lights + auxiliary readouts. Drivers only
 // glance here when something's off — keep the warnings unmissable.
 export function StatusPanel() {
   const relayStates = useSignal('ecu_relay_states');
   const tsVoltage = useSignal('ecu_ts_voltage');
   const glvSoc = useSignal('ecu_glv_soc');
+  const tcmStatus = useSignal('tcm_status_bits');
+  const cloudPing = useSignal('tcm_mapache_ping');
   const connected = useSignalStore((s) => s.connected);
+
+  const cloudOk = (tcmStatus & TCM_STATUS_MQTT) !== 0 && (tcmStatus & TCM_STATUS_CONNECTION) !== 0;
 
   return (
     <div className="flex h-full flex-col gap-4 p-6">
@@ -18,14 +27,22 @@ export function StatusPanel() {
         <Stat label="GLV" value={glvSoc.toFixed(0)} unit="%" />
       </div>
 
-      <div className="flex flex-1 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/60 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className={`h-3 w-3 rounded-full ${connected ? 'bg-emerald-400' : 'bg-red-500'}`} />
-          <div className="text-sm tracking-wider text-neutral-400 uppercase">
-            {connected ? 'TELEMETRY OK' : 'NO TELEMETRY'}
-          </div>
-        </div>
+      <div className="flex flex-1 flex-col gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 px-4 py-3">
+        <ConnectionRow ok={connected} label={connected ? 'TELEMETRY OK' : 'NO TELEMETRY'} />
+        <ConnectionRow
+          ok={cloudOk}
+          label={cloudOk ? `CLOUD ${cloudPing.toFixed(0)} MS` : 'CLOUD OFFLINE'}
+        />
       </div>
+    </div>
+  );
+}
+
+function ConnectionRow({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className={`h-3 w-3 rounded-full ${ok ? 'bg-emerald-400' : 'bg-red-500'}`} />
+      <div className="text-sm tracking-wider text-neutral-400 uppercase">{label}</div>
     </div>
   );
 }
