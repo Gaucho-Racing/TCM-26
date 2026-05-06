@@ -67,12 +67,26 @@ func newClient(label, host, port, user, password string, connectRetry bool) mq.C
 
 // Publish sends payload to both local and cloud brokers (best-effort).
 // Each publish runs in its own goroutine so a slow/disconnected broker
-// can't block the caller. Use this for all telemetry from the relay.
+// can't block the caller. Use this for low-rate telemetry that doesn't
+// need independent throttling per broker (pings, status, resources).
 func Publish(topic string, qos byte, retained bool, payload []byte) {
+	PublishLocal(topic, qos, retained, payload)
+	PublishCloud(topic, qos, retained, payload)
+}
+
+// PublishLocal / PublishCloud target a single broker each. Used by the
+// CAN ingest path which throttles each broker independently — the dash
+// wants high-rate local updates while cloud stays at a modest cellular-
+// friendly rate.
+func PublishLocal(topic string, qos byte, retained bool, payload []byte) {
 	publishOne(Client, "local", topic, qos, retained, payload)
-	if CloudClient != nil {
-		publishOne(CloudClient, "cloud", topic, qos, retained, payload)
+}
+
+func PublishCloud(topic string, qos byte, retained bool, payload []byte) {
+	if CloudClient == nil {
+		return
 	}
+	publishOne(CloudClient, "cloud", topic, qos, retained, payload)
 }
 
 func publishOne(client mq.Client, label, topic string, qos byte, retained bool, payload []byte) {

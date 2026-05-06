@@ -49,5 +49,6 @@ func InitializeDB() error {
 }
 
 func InitializeMap() {
-	config.LastSucessfulPublish = cmap.New[uint64]()
+	config.LastLocalPublish = cmap.New[uint64]()
+	config.LastCloudPublish = cmap.New[uint64]()
 }

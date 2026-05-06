@@ -32,8 +32,15 @@ var CloudMQTTPassword = os.Getenv("CLOUD_MQTT_PASSWORD")
 
 var CANPort = os.Getenv("CAN_PORT")
 
-var LastSucessfulPublish = cmap.ConcurrentMap[string, uint64]{}
-var PublishInterval = os.Getenv("PUBLISH_INTERVAL")
-var PublishIntervalInt int
+// Per-CAN-ID publish throttles, in milliseconds. We track local and cloud
+// independently so the on-vehicle dash can run high-rate while the cellular
+// uplink stays modest.
+var LocalPublishInterval = os.Getenv("LOCAL_PUBLISH_INTERVAL")
+var LocalPublishIntervalInt int
+var CloudPublishInterval = os.Getenv("CLOUD_PUBLISH_INTERVAL")
+var CloudPublishIntervalInt int
+
+var LastLocalPublish = cmap.ConcurrentMap[string, uint64]{}
+var LastCloudPublish = cmap.ConcurrentMap[string, uint64]{}
 
 var PingInterval = os.Getenv("PING_INTERVAL")

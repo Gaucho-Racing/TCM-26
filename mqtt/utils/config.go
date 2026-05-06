@@ -17,14 +17,24 @@ func VerifyConfig() {
 		SugarLogger.Fatalln("VEHICLE_UPLOAD_KEY is not a valid unsigned 16-bit integer")
 	}
 	config.VehicleUploadKey = uint16(key)
-	publishInterval, err := strconv.Atoi(config.PublishInterval)
-	if err != nil {
-		SugarLogger.Errorf("PUBLISH_INTERVAL is not a number, using 100ms: %v", err)
-		publishInterval = 100
-	}
-	config.PublishIntervalInt = publishInterval
+
+	config.LocalPublishIntervalInt = parseIntervalMs(config.LocalPublishInterval, 20, "LOCAL_PUBLISH_INTERVAL")
+	config.CloudPublishIntervalInt = parseIntervalMs(config.CloudPublishInterval, 100, "CLOUD_PUBLISH_INTERVAL")
 
 	SugarLogger.Infof("Vehicle ID: %s", config.VehicleID)
 	SugarLogger.Infof("Vehicle Upload Key: %d", config.VehicleUploadKey)
-	SugarLogger.Infof("Publish Interval: %dms", config.PublishIntervalInt)
+	SugarLogger.Infof("Local Publish Interval: %dms", config.LocalPublishIntervalInt)
+	SugarLogger.Infof("Cloud Publish Interval: %dms", config.CloudPublishIntervalInt)
+}
+
+func parseIntervalMs(raw string, fallback int, name string) int {
+	if raw == "" {
+		return fallback
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil {
+		SugarLogger.Errorf("%s is not a number, using %dms: %v", name, fallback, err)
+		return fallback
+	}
+	return v
 }

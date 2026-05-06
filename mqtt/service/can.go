@@ -10,6 +10,8 @@ import (
 	"net"
 	"strconv"
 	"time"
+
+	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
 // dlcLookup maps an FDCAN DLC value (0-15) to the actual data length in bytes.
@@ -76,23 +78,31 @@ func PublishData(canID uint32, nodeID uint8, messageID uint16, targetID uint8, d
 	binary.Write(buf, binary.BigEndian, config.VehicleUploadKey)
 	buf.Write(data)
 
-	// Check if we should publish to MQTT
+	// Throttle each broker independently — local can run high-rate for the
+	// dash, cloud stays cellular-friendly.
 	canIDString := fmt.Sprintf("%d", canID)
-	lastSent, ok := config.LastSucessfulPublish.Get(canIDString)
-	shouldPublish := false
-	if ok {
-		// Publish interval in milliseconds (convert to microseconds)
-		if timestamp-lastSent > uint64(config.PublishIntervalInt*1000) {
-			shouldPublish = true
-		}
-	} else {
-		shouldPublish = true
+	if shouldPublishOn(canIDString, timestamp, config.LastLocalPublish, config.LocalPublishIntervalInt) {
+		mqtt.PublishLocal(topic, 1, true, buf.Bytes())
 	}
-	if shouldPublish {
-		// Update timestamp BEFORE publishing to prevent race condition
-		config.LastSucessfulPublish.Set(canIDString, timestamp)
-		mqtt.Publish(topic, 1, true, buf.Bytes())
+	if shouldPublishOn(canIDString, timestamp, config.LastCloudPublish, config.CloudPublishIntervalInt) {
+		mqtt.PublishCloud(topic, 1, true, buf.Bytes())
 	}
+}
+
+func shouldPublishOn(
+	canID string,
+	ts uint64,
+	last cmap.ConcurrentMap[string, uint64],
+	intervalMs int,
+) bool {
+	lastTs, ok := last.Get(canID)
+	if ok && ts-lastTs <= uint64(intervalMs*1000) {
+		return false
+	}
+	// Update before publishing so a slow MQTT call can't push us past the
+	// next interval window.
+	last.Set(canID, ts)
+	return true
 }
 
 func ListenCAN(port string) {
