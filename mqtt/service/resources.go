@@ -31,7 +31,7 @@ func InitializeResourceQuery() {
 }
 
 func QueryResourceMetrics() (model.ResourceMetrics, error) {
-	out, err := exec.Command("python3", "jetson-stats.py").Output()
+	out, err := exec.Command("python3", "scripts/jetson-stats.py").Output()
 	if err != nil {
 		return model.ResourceMetrics{}, fmt.Errorf("failed to run jetson-stats.py: %w", err)
 	}
