@@ -5,7 +5,6 @@ services:
     build:
       context: .
       dockerfile: mqtt/Dockerfile.dev
-    container_name: mqtt
     restart: unless-stopped
     depends_on:
       - db
@@ -47,7 +46,6 @@ services:
   # gr26 ingest. Image is published from the Mapache repo via GH Actions.
   gr26:
     image: ghcr.io/gaucho-racing/mapache/gr26:latest
-    container_name: gr26
     restart: unless-stopped
     depends_on:
       - db
@@ -74,7 +72,6 @@ services:
 
   nanomq:
     image: emqx/nanomq:latest
-    container_name: nanomq
     restart: unless-stopped
     ports:
       # Use a non-default host port so the Mapache stack (also exposes 1883)
@@ -84,7 +81,6 @@ services:
 
   db:
     image: postgres:18-alpine
-    container_name: db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${DATABASE_USER:-postgres}
