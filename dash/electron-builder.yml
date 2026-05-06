@@ -1,0 +1,35 @@
+appId: com.gauchoracing.gr26.dash
+productName: GR26 Dash
+copyright: Copyright (c) 2026 Gaucho Racing
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - 'out/**/*'
+  - 'package.json'
+  - '!node_modules/**/{CHANGELOG.md,README.md,readme.md,LICENSE.txt}'
+
+asar: true
+
+linux:
+  target:
+    - target: deb
+      arch:
+        - arm64
+        - x64
+    - target: AppImage
+      arch:
+        - arm64
+        - x64
+  category: Utility
+  desktop:
+    Name: GR26 Dash
+    Comment: On-vehicle driver display
+    Categories: Utility
+    StartupNotify: false
+
+deb:
+  packageCategory: utils
+  priority: optional

@@ -1,0 +1,35 @@
+@import 'tailwindcss';
+
+/* Driver display is 1600x600. We render at exactly that resolution and let
+   the OS handle scaling if the user resizes during dev. */
+html,
+body,
+#root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: none;
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  /* Prefer tabular figures so big numbers don't shift width as digits change. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Allow the cursor to come back during dev for inspection. */
+@media (max-resolution: 1dppx) {
+  html,
+  body,
+  #root {
+    cursor: default;
+  }
+}
