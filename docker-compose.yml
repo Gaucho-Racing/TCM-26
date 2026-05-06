@@ -39,7 +39,9 @@ services:
       CLOUD_MQTT_USER: ${CLOUD_MQTT_USER:-}
       CLOUD_MQTT_PASSWORD: ${CLOUD_MQTT_PASSWORD:-}
       CAN_PORT: "8000"
-      PUBLISH_INTERVAL: "100"
+      # Per-CAN-ID MQTT publish throttle in ms. 50ms = 20Hz max, gives the
+      # local dash plenty of headroom even if the firmware sends faster.
+      PUBLISH_INTERVAL: "50"
       PING_INTERVAL: "5000"
 
   # Local gr26 ingest. Opt-in via `docker compose --profile dash up` once
