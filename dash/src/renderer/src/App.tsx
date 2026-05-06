@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { useSignals } from './hooks/useSignals';
 import { useSignal, useSignalStore } from './store/signals';
 import { aggregateCells, CELL_SIGNALS } from './lib/cells';
@@ -9,10 +10,14 @@ import {
   stateClassNames,
   ECU_STATE,
 } from './lib/state';
+import { DebugMatrix } from './views/DebugMatrix';
 
 const SUBSCRIBED_SIGNALS = [
   // ECU state machine — drives Vehicle State + derived TS/RTD indicators.
   'ecu_ecu_state',
+  // Power/torque settings — only shown in the debug matrix, but cheap to keep.
+  'ecu_power_level',
+  'ecu_torque_map',
   // Safety lights from Dash Config (ECU → dash).
   'ecu_led_bms',
   'ecu_led_imd',
@@ -20,6 +25,13 @@ const SUBSCRIBED_SIGNALS = [
   'ecu_led_bms_latch',
   'ecu_led_imd_latch',
   'ecu_led_bspd_latch',
+  // Driver button state from Dash Status (visible in the debug matrix).
+  'dash_panel_ts_active',
+  'dash_panel_rtd',
+  'dash_panel_ts_off',
+  'dash_panel_rtd_off',
+  'dash_panel_led_bms',
+  'dash_panel_led_imd',
   // Primary readouts
   'ecu_vehicle_speed',
   'ecu_accumulator_soc',
@@ -28,13 +40,44 @@ const SUBSCRIBED_SIGNALS = [
   // TCM connectivity from the relay's TCM Status (0x029).
   'tcm_connection_ok',
   'tcm_mqtt_ok',
+  'tcm_epic_shelter_ok',
+  'tcm_camera_ok',
   'tcm_mapache_ping',
+  'tcm_cache_size',
   // Per-cell voltages and temps — aggregated to max/min.
   ...CELL_SIGNALS,
 ] as const;
 
+// `?view=debug` deep-links to the matrix, since the Jetson kiosk usually
+// has no keyboard. The `d` keybind is for fast toggling on a dev box.
+function useDebugView(): [boolean, (v: boolean) => void] {
+  const [debug, setDebug] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('view') === 'debug';
+  });
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === 'd' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        setDebug((d) => !d);
+      } else if (e.key === 'Escape') {
+        setDebug(false);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  return [debug, setDebug];
+}
+
 export default function App() {
   useSignals(SUBSCRIBED_SIGNALS);
+  const [debug, setDebug] = useDebugView();
+
+  if (debug) {
+    return <DebugMatrix onClose={() => setDebug(false)} />;
+  }
 
   return (
     <div className="grid h-screen w-screen grid-cols-[1fr_1.6fr_1fr] gap-3 bg-neutral-950 p-4">
