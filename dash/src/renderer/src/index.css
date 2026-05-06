@@ -1,5 +1,22 @@
 @import 'tailwindcss';
 
+@theme {
+  /* slightly darker than neutral-900 — used for the cell strip background */
+  --color-neutral-925: #0e0e0e;
+
+  /* slow, subtle pulse for the active drive state */
+  --animate-pulse-slow: pulse-slow 2.4s ease-in-out infinite;
+  @keyframes pulse-slow {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.85;
+    }
+  }
+}
+
 /* Driver display is 1600x600. We render at exactly that resolution and let
    the OS handle scaling if the user resizes during dev. */
 html,
