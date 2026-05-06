@@ -53,10 +53,12 @@ services:
       - db
       - nanomq
     ports:
-      - "7005:7005"
+      # Different port from Mapache's gr26 (7005) so both stacks can run on
+      # the same host without colliding.
+      - "8001:8001"
     environment:
       ENV: "DEV"
-      PORT: "7005"
+      PORT: "8001"
       SKIP_AUTH_CHECK: "true"
       ENABLE_SIGNAL_DB: "false"
       ENABLE_SIGNAL_WS: "true"
