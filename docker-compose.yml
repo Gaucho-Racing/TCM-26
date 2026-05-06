@@ -16,6 +16,11 @@ services:
     volumes:
       - ./mqtt:/app/mqtt
       - mqtt_go_cache:/go
+      # jtop reads metrics over a unix socket exposed by the host's
+      # jetson-stats service. Install on the Jetson with:
+      #   sudo -H pip install -U jetson-stats
+      #   sudo systemctl enable --now jtop.service
+      - /var/run/jtop.sock:/var/run/jtop.sock
     environment:
       ENV: "DEV"
       VEHICLE_ID: ${VEHICLE_ID:-GR26}
