@@ -12,7 +12,10 @@
 #include "circularBuffer.h"
 
 // Comment out to disable interrupt debug output
-#define DEBUG
+// #define DEBUG
+
+// Comment out to disable UDP debug output
+// #define UDP_DEBUG
 
 #ifdef DEBUG
 #define DBG_PRINT(fmt, ...) printf("[DEBUG] " fmt, ##__VA_ARGS__)
@@ -25,6 +28,14 @@ static long long get_epoch_us(void) {
 #else
 #define DBG_PRINT(fmt, ...) do {} while(0)
 #define DBG_EPOCH_US() 0LL
+#endif
+
+#ifdef UDP_DEBUG
+#define UDP_DBG_PRINT(fmt, ...) printf("[UDP_DEBUG] " fmt, ##__VA_ARGS__)
+#define UDP_PRINT(fmt, ...) printf(" " fmt, ##__VA_ARGS__)
+#else
+#define UDP_DBG_PRINT(fmt, ...) do {} while(0)
+#define UDP_PRINT(fmt, ...) do {} while(0)
 #endif
 
 static volatile int interrupt = 1;
@@ -138,6 +149,14 @@ void calling()
     frame.combined.split.length = length;
 
     spiXfer(SPI_init, txTemp, (char *)frame.combined.split.data, length + length%2);
+
+    // Unswap bytes within each 16-bit halfword (SPI byte-swapped them)
+    for (uint8_t i = 0; i < length + length%2; i += 2) {
+        uint8_t tmp = frame.combined.split.data[i];
+        frame.combined.split.data[i] = frame.combined.split.data[i+1];
+        frame.combined.split.data[i+1] = tmp;
+    }
+
     circularBufferPush(cb, frame.combined.buffer, sizeof(frame.combined.buffer));
 
     long long isr_end = DBG_EPOCH_US();
@@ -170,7 +189,7 @@ int main(int argc, char *argv[])
     {
         printf("Jetgpio initialisation OK. Return code:  %d\n", Init);
     }
-    SPI_init = startSPI(1, 8000000, 0, 0);
+    SPI_init = startSPI(1, 12000000, 0, 0);
     status = enableGPIO(18, JET_INPUT);
 
     /*
@@ -208,12 +227,11 @@ int main(int argc, char *argv[])
                 perror("Send failed, message lost");
                 continue;
             }
-            DBG_PRINT("%05u  0x%08x  BUS=%2u  LEN=%3u  SENT  BUF=%2u/%2u\n",
-                      seq,
-                      frame->combined.split.ID,
-                      frame->combined.split.bus,
-                      frame->combined.split.length,
-                      cb->size, cb->capacity);
+            uint8_t *raw = (uint8_t *)frame->combined.buffer;
+            for(int i = 0; i < (int)sizeof(frame->combined.buffer); i++){
+                UDP_PRINT("%02X ", raw[i]);
+            }
+            UDP_PRINT("\n");
         } else if(counter >= 2000){
             if (gpioRead(18) == 0){
                 calling();
