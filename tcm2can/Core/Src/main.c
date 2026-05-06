@@ -70,7 +70,7 @@ struct CAN{
     struct{
       uint32_t ID;
       uint8_t bus;
-      uint16_t length;
+      uint8_t length;
       uint8_t data[64];
     }split;
   }combined;

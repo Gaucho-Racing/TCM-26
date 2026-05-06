@@ -11,6 +11,22 @@
 #include <time.h>
 #include "circularBuffer.h"
 
+// Comment out to disable interrupt debug output
+#define DEBUG
+
+#ifdef DEBUG
+#define DBG_PRINT(fmt, ...) printf("[DEBUG] " fmt, ##__VA_ARGS__)
+#define DBG_EPOCH_US() get_epoch_us()
+static long long get_epoch_us(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_REALTIME, &ts);
+    return (long long)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000;
+}
+#else
+#define DBG_PRINT(fmt, ...) do {} while(0)
+#define DBG_EPOCH_US() 0LL
+#endif
+
 static volatile int interrupt = 1;
 long unsigned int timestamp;
 volatile int temp = 0;
@@ -23,13 +39,13 @@ struct CAN{
       struct{
         uint32_t ID;
         uint8_t bus;
-        uint16_t length;
+        uint8_t length;
         uint8_t data[64];
       }split;
     }combined;
   };
 
-void inthandler(int signum) 
+void inthandler(int signum)
 {
   usleep(1000);
   printf("\nCaught Ctrl-c, coming out ...\n");
@@ -94,40 +110,46 @@ int setCB(int pin, int edge, int delay, long unsigned int *timestamp, void *call
     return stat2;
 }
 
+static uint32_t seq = 0;
+
 void calling()
 {
-    // uint32_t start = clock();
+    long long isr_start = DBG_EPOCH_US();
+    seq++;
+
     struct CAN frame = {0,};
     char tx[6] = {0,};
     char rx[6] = {0,};
     spiXfer(SPI_init, tx, rx, 6);
-    //cases the chat into uint 8 
-    //this is used to get the length of the message
-    //temp var for tx
-    uint32_t temp  = 0;
-    temp |= (uint32_t)(rx[1]);
-    temp |= ((uint32_t)(rx[0]) << 8);
-    temp |= (uint32_t)(rx[3] << 16);
-    temp |= (uint32_t)(rx[2] << 24);
 
-    frame.combined.split.ID =  temp;
+    // STM32 uses 16-bit SPI with MSB-first + LE memory → bytes are
+    // swapped within each 16-bit halfword on the wire
+    frame.combined.split.ID = (uint32_t)(rx[1]) |
+                              ((uint32_t)(rx[0]) << 8) |
+                              ((uint32_t)(rx[3]) << 16) |
+                              ((uint32_t)(rx[2]) << 24);
+    // bus is at struct offset 4, length at offset 5
+    // but 16-bit SPI swaps them: rx[4]=length, rx[5]=bus
     frame.combined.split.bus = rx[5];
-    frame.combined.split.length = rx[4]; 
-    // frame.combined.split.length = rx[4]; 
     char txTemp[64] = {0x69,};
     uint8_t length = (uint8_t)(rx[4]);
-    // circularBufferPush(cb, frame.combined.buffer, sizeof(frame.combined.buffer));
 
+    if (length > 64) length = 64;
+    frame.combined.split.length = length;
 
-    // printf("LOAD: %d\n", cb->size);
-    
     spiXfer(SPI_init, txTemp, (char *)frame.combined.split.data, length + length%2);
     circularBufferPush(cb, frame.combined.buffer, sizeof(frame.combined.buffer));
-    // uint32_t end = clock();
-    // printf("TIME: %f\n", (double)(end - start)/CLOCKS_PER_SEC);
-    //printf("edge detected with EPOCH timestamp: %lu\n", timestamp);
-    // terminating while loop
-    //interrupt = 0;
+
+    long long isr_end = DBG_EPOCH_US();
+    DBG_PRINT("%05u  0x%08x  BUS=%2u  LEN=%3u  DATA=%02X %02X %02X %02X  BUF=%2u/%2u  DUR=%5lldus\n",
+              seq, frame.combined.split.ID,
+              frame.combined.split.bus, length,
+              frame.combined.split.data[0],
+              frame.combined.split.data[1],
+              frame.combined.split.data[2],
+              frame.combined.split.data[3],
+              cb->size, cb->capacity,
+              isr_end - isr_start);
 }
 
 int main(int argc, char *argv[])
@@ -148,8 +170,8 @@ int main(int argc, char *argv[])
     {
         printf("Jetgpio initialisation OK. Return code:  %d\n", Init);
     }
-    SPI_init = startSPI(1, 16000000, 0, 0);
-    status = enableGPIO(29, JET_INPUT);
+    SPI_init = startSPI(1, 8000000, 0, 0);
+    status = enableGPIO(18, JET_INPUT);
 
     /*
     BK stuff
@@ -164,7 +186,7 @@ int main(int argc, char *argv[])
         perror("Socket creation failed");
         exit(1);
     }
-     
+
     // Set server address
     memset(&servaddr, 0, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
@@ -176,27 +198,26 @@ int main(int argc, char *argv[])
     */
 
     //enable interupt after everything is good.
-    status = setCB(29, FALLING_EDGE, 10, &timestamp, &calling);
+    status = setCB(18, FALLING_EDGE, 10, &timestamp, &calling);
     printf("%d\n", status);
     while(interrupt){
         struct CAN *frame = circularBufferPop(cb);
         if(frame != NULL){
             counter = 0;
-            // printf("LENGTH: %d\n", frame->combined.split.length);
-            // printf("ID: %x\n", frame->combined.split.ID);
-            // printf("BUS: %x\n", frame->combined.split.bus);
-            // printf("%d\n", message_count);
-            // printf("|=====|\n");
-            // message_count++;
             if (sendto(sockfd, frame, sizeof(struct CAN), 0, (const struct sockaddr *)&servaddr, sizeof(servaddr)) < 0) {
                 perror("Send failed, message lost");
                 continue;
             }
+            DBG_PRINT("%05u  0x%08x  BUS=%2u  LEN=%3u  SENT  BUF=%2u/%2u\n",
+                      seq,
+                      frame->combined.split.ID,
+                      frame->combined.split.bus,
+                      frame->combined.split.length,
+                      cb->size, cb->capacity);
         } else if(counter >= 2000){
-            printf("STATE: RESET\n");
-            if (gpioRead(29) == 0){
+            if (gpioRead(18) == 0){
                 calling();
-                printf("reset2\n");
+                DBG_PRINT("%05u  POLL  calling\n", seq);
             }
             counter = 0;
         } else {
@@ -208,4 +229,3 @@ int main(int argc, char *argv[])
     gpioTerminate();
     exit(0);
 }
-
