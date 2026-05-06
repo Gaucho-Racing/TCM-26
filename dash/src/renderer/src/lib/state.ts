@@ -12,13 +12,20 @@ export const ECU_STATE = {
 
 export function stateLabel(raw: number): string {
   switch (raw) {
-    case ECU_STATE.GLV_OFF: return 'GLV OFF';
-    case ECU_STATE.GLV_ON: return 'GLV ON';
-    case ECU_STATE.PRECHARGE_ENGAGED: return 'PRECHARGE';
-    case ECU_STATE.PRECHARGE_COMPLETE: return 'READY';
-    case ECU_STATE.DRIVE_ACTIVE: return 'DRIVE';
-    case ECU_STATE.TS_DISCHARGE: return 'TS DISCHARGE';
-    default: return '—';
+    case ECU_STATE.GLV_OFF:
+      return 'GLV OFF';
+    case ECU_STATE.GLV_ON:
+      return 'GLV ON';
+    case ECU_STATE.PRECHARGE_ENGAGED:
+      return 'PRECHARGE';
+    case ECU_STATE.PRECHARGE_COMPLETE:
+      return 'READY';
+    case ECU_STATE.DRIVE_ACTIVE:
+      return 'DRIVE';
+    case ECU_STATE.TS_DISCHARGE:
+      return 'TS DISCHARGE';
+    default:
+      return '—';
   }
 }
 

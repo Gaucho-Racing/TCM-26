@@ -24,7 +24,7 @@ export default function App() {
   // 1600x600 stripe, three columns. Left ~25% / center 50% / right ~25%.
   // Grid keeps panels aligned regardless of content height.
   return (
-    <div className="w-screen h-screen bg-neutral-950 grid grid-cols-[400px_1fr_400px]">
+    <div className="grid h-screen w-screen grid-cols-[400px_1fr_400px] bg-neutral-950">
       <StatePanel />
       <SpeedPanel />
       <StatusPanel />

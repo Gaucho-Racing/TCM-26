@@ -55,15 +55,15 @@ The dash subscribes to the signal names emitted by `gr26` ingest, which are
 composed as `{source_node}_{field_name}` from the MQTT topic structure.
 Currently:
 
-| Signal | Source | Field |
-|--------|--------|-------|
-| `ecu_ecu_state` | ECU Status 1 | state machine bitfield |
-| `ecu_power_level` / `ecu_torque_map` | ECU Status 1 | u4 nibbles |
-| `ecu_max_cell_temp` | ECU Status 1 | hottest cell, °C |
-| `ecu_accumulator_soc` / `ecu_glv_soc` | ECU Status 1 | percent |
-| `ecu_vehicle_speed` | ECU Status 2 | absolute speed, MPH |
-| `ecu_ts_voltage` | ECU Status 2 | tractive system voltage |
-| `ecu_relay_states` | ECU Status 3 | safety bitfield (BMS/IMD/BSPD/SW) |
+| Signal                                | Source       | Field                             |
+| ------------------------------------- | ------------ | --------------------------------- |
+| `ecu_ecu_state`                       | ECU Status 1 | state machine bitfield            |
+| `ecu_power_level` / `ecu_torque_map`  | ECU Status 1 | u4 nibbles                        |
+| `ecu_max_cell_temp`                   | ECU Status 1 | hottest cell, °C                  |
+| `ecu_accumulator_soc` / `ecu_glv_soc` | ECU Status 1 | percent                           |
+| `ecu_vehicle_speed`                   | ECU Status 2 | absolute speed, MPH               |
+| `ecu_ts_voltage`                      | ECU Status 2 | tractive system voltage           |
+| `ecu_relay_states`                    | ECU Status 3 | safety bitfield (BMS/IMD/BSPD/SW) |
 
 To add a signal: append to `SUBSCRIBED_SIGNALS` in `src/renderer/src/App.tsx`,
 then read it in any component with `useSignal('signal_name')`.

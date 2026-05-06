@@ -12,13 +12,11 @@ export function StatePanel() {
   const c = stateClassNames(ecuState);
 
   return (
-    <div className="flex flex-col h-full p-6 gap-4">
+    <div className="flex h-full flex-col gap-4 p-6">
       <div
-        className={`flex-1 flex items-center justify-center rounded-2xl border ${c.bg} ${c.border}`}
+        className={`flex flex-1 items-center justify-center rounded-2xl border ${c.bg} ${c.border}`}
       >
-        <div className={`text-5xl font-black tracking-tight ${c.text}`}>
-          {label}
-        </div>
+        <div className={`text-5xl font-black tracking-tight ${c.text}`}>{label}</div>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -31,13 +29,11 @@ export function StatePanel() {
 
 function Tile({ label, value, unit }: { label: string; value: string; unit?: string }) {
   return (
-    <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl px-4 py-3">
-      <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">
-        {label}
-      </div>
-      <div className="text-3xl font-bold text-neutral-100 leading-none">
+    <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 px-4 py-3">
+      <div className="mb-1 text-xs tracking-wider text-neutral-500 uppercase">{label}</div>
+      <div className="text-3xl leading-none font-bold text-neutral-100">
         {value}
-        {unit && <span className="text-base text-neutral-500 ml-1">{unit}</span>}
+        {unit && <span className="ml-1 text-base text-neutral-500">{unit}</span>}
       </div>
     </div>
   );

@@ -62,7 +62,11 @@ export function useSignals(signalNames: readonly string[]): void {
       ws.addEventListener('close', scheduleReconnect);
       ws.addEventListener('error', () => {
         // close will fire after error; let it handle reconnect
-        try { ws.close(); } catch { /* ignore */ }
+        try {
+          ws.close();
+        } catch {
+          /* ignore */
+        }
       });
     };
 
@@ -71,7 +75,11 @@ export function useSignals(signalNames: readonly string[]): void {
     return () => {
       cancelled = true;
       if (reconnectTimer) clearTimeout(reconnectTimer);
-      try { wsRef.current?.close(); } catch { /* ignore */ }
+      try {
+        wsRef.current?.close();
+      } catch {
+        /* ignore */
+      }
     };
   }, [namesKey, setSignal, setConnected]);
 }

@@ -10,7 +10,7 @@ export function StatusPanel() {
   const connected = useSignalStore((s) => s.connected);
 
   return (
-    <div className="flex flex-col h-full p-6 gap-4">
+    <div className="flex h-full flex-col gap-4 p-6">
       <SafetyLights relayStates={relayStates} />
 
       <div className="grid grid-cols-2 gap-3">
@@ -18,12 +18,10 @@ export function StatusPanel() {
         <Stat label="GLV" value={glvSoc.toFixed(0)} unit="%" />
       </div>
 
-      <div className="flex-1 bg-neutral-900/60 border border-neutral-800 rounded-xl px-4 py-3 flex items-center justify-center">
+      <div className="flex flex-1 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/60 px-4 py-3">
         <div className="flex items-center gap-3">
-          <div
-            className={`w-3 h-3 rounded-full ${connected ? 'bg-emerald-400' : 'bg-red-500'}`}
-          />
-          <div className="text-sm text-neutral-400 uppercase tracking-wider">
+          <div className={`h-3 w-3 rounded-full ${connected ? 'bg-emerald-400' : 'bg-red-500'}`} />
+          <div className="text-sm tracking-wider text-neutral-400 uppercase">
             {connected ? 'TELEMETRY OK' : 'NO TELEMETRY'}
           </div>
         </div>
@@ -41,8 +39,8 @@ function SafetyLights({ relayStates }: { relayStates: number }) {
   ];
 
   return (
-    <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl p-3">
-      <div className="text-xs text-neutral-500 uppercase tracking-wider mb-2 text-center">
+    <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 p-3">
+      <div className="mb-2 text-center text-xs tracking-wider text-neutral-500 uppercase">
         Safety
       </div>
       <div className="grid grid-cols-4 gap-2">
@@ -51,10 +49,10 @@ function SafetyLights({ relayStates }: { relayStates: number }) {
           return (
             <div
               key={key}
-              className={`flex flex-col items-center justify-center rounded-lg py-2 border ${
+              className={`flex flex-col items-center justify-center rounded-lg border py-2 ${
                 ok
-                  ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
-                  : 'bg-red-500/15 border-red-500/50 text-red-400'
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                  : 'border-red-500/50 bg-red-500/15 text-red-400'
               }`}
             >
               <div className="text-xs font-bold uppercase">{label}</div>
@@ -68,13 +66,11 @@ function SafetyLights({ relayStates }: { relayStates: number }) {
 
 function Stat({ label, value, unit }: { label: string; value: string; unit: string }) {
   return (
-    <div className="bg-neutral-900/60 border border-neutral-800 rounded-xl px-4 py-3">
-      <div className="text-xs text-neutral-500 uppercase tracking-wider mb-1">
-        {label}
-      </div>
-      <div className="text-3xl font-bold text-neutral-100 leading-none">
+    <div className="rounded-xl border border-neutral-800 bg-neutral-900/60 px-4 py-3">
+      <div className="mb-1 text-xs tracking-wider text-neutral-500 uppercase">{label}</div>
+      <div className="text-3xl leading-none font-bold text-neutral-100">
         {value}
-        <span className="text-base text-neutral-500 ml-1">{unit}</span>
+        <span className="ml-1 text-base text-neutral-500">{unit}</span>
       </div>
     </div>
   );
