@@ -173,7 +173,25 @@ func ListenCAN(port string) {
 			utils.SugarLogger.Infof("[CAN] Payload length %d exceeds packet size %d, skipping", length, n)
 			continue
 		}
-		payload := buffer[6 : length+6]
+		// Undo the 16-bit SPI byte swap: STM32 transmits in 16-bit words on the
+		// SPI bus, but icanspi reads 8 bits at a time, so bytes within each pair
+		// end up reversed on the wire. Swap them back so downstream decoders
+		// see the data in the original memory order. For odd lengths, copy one
+		// extra byte from the trailing padding so the final byte's pair partner
+		// is included in the swap, then trim.
+		swapLen := length
+		if swapLen%2 == 1 {
+			swapLen++
+		}
+		if swapLen+6 > n {
+			swapLen = length // safety: no extra byte available, leave odd byte alone
+		}
+		payload := make([]byte, swapLen)
+		copy(payload, buffer[6:6+swapLen])
+		for i := 0; i+1 < swapLen; i += 2 {
+			payload[i], payload[i+1] = payload[i+1], payload[i]
+		}
+		payload = payload[:length]
 
 		if shouldLog {
 			utils.SugarLogger.Infof("[CAN] Bus: %d", bus)
