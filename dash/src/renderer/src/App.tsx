@@ -36,10 +36,42 @@ export default function App() {
   useSignals(SUBSCRIBED_SIGNALS);
 
   return (
-    <div className="grid h-screen w-screen grid-rows-[160px_1fr_120px] gap-3 bg-neutral-950 p-4">
+    <div className="relative grid h-screen w-screen grid-rows-[160px_1fr_120px] gap-3 bg-neutral-950 p-4">
       <TopRow />
       <SpeedRow />
       <BottomRow />
+      <DebugHud />
+    </div>
+  );
+}
+
+// Tiny corner overlay so we can confirm at a glance whether the WS is open
+// and how many signals have arrived. Toggle with `?debug=1` in the URL or
+// just leave it on — it's small.
+function DebugHud() {
+  const connected = useSignalStore((s) => s.connected);
+  const messageCount = useSignalStore((s) => s.messageCount);
+  const lastSignalName = useSignalStore((s) => s.lastSignalName);
+  const lastSignalAt = useSignalStore((s) => s.lastSignalAt);
+  const ageMs = lastSignalAt ? Date.now() - lastSignalAt : -1;
+
+  return (
+    <div className="pointer-events-none absolute top-1 right-2 font-mono text-[10px] text-neutral-500">
+      <span className={connected ? 'text-emerald-400' : 'text-red-400'}>
+        WS {connected ? 'OK' : 'DOWN'}
+      </span>
+      {' · '}msgs <span className="text-neutral-300 tabular-nums">{messageCount}</span>
+      {lastSignalName && (
+        <>
+          {' · '}last <span className="text-neutral-300">{lastSignalName}</span>
+          {ageMs >= 0 && (
+            <>
+              {' '}
+              <span className="tabular-nums">{(ageMs / 1000).toFixed(1)}s</span>
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 }

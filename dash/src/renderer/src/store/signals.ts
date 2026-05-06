@@ -16,6 +16,13 @@ interface SignalStore {
   connected: boolean;
   setConnected: (c: boolean) => void;
 
+  // Diagnostics — bumped on every incoming message so a debug HUD can show
+  // whether the dash is actually receiving updates, independent of which
+  // specific signals it has decoded.
+  messageCount: number;
+  lastSignalName: string;
+  lastSignalAt: number;
+
   // Selector helper: returns the value or `fallback` if the signal hasn't
   // arrived yet. Use this in components to avoid undefined checks everywhere.
   get: (name: string, fallback?: number) => number;
@@ -26,10 +33,17 @@ export const useSignalStore = create<SignalStore>((set, getState) => ({
   setSignal: (name, signal) =>
     set((state) => ({
       signals: { ...state.signals, [name]: signal },
+      messageCount: state.messageCount + 1,
+      lastSignalName: name,
+      lastSignalAt: Date.now(),
     })),
 
   connected: false,
   setConnected: (c) => set({ connected: c }),
+
+  messageCount: 0,
+  lastSignalName: '',
+  lastSignalAt: 0,
 
   get: (name, fallback = 0) => getState().signals[name]?.value ?? fallback,
 }));
