@@ -7,13 +7,6 @@ on:
       - "**"
     tags:
       - "**"
-    paths:
-      - "dash/**"
-      - ".github/workflows/dash.yml"
-  pull_request:
-    paths:
-      - "dash/**"
-      - ".github/workflows/dash.yml"
 
 jobs:
   check:
