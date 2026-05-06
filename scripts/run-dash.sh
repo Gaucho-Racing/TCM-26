@@ -44,10 +44,10 @@ if [ ! -d node_modules ]; then
   npm install
 fi
 
-if [ ! -f .env.local ] && [ ! -f .env ]; then
-  echo "[dash] WARN: no .env.local found. If signals don't show up, the"
+if [ ! -f .env ]; then
+  echo "[dash] WARN: no .env found. If signals don't show up, the"
   echo "[dash]       most likely cause is a vehicle_id mismatch with the"
-  echo "[dash]       relay. Create dash/.env.local with:"
+  echo "[dash]       relay. Create dash/.env with:"
   echo "[dash]         VITE_GR26_VEHICLE_ID=<id matching tcm-26/.env VEHICLE_ID>"
 fi
 
