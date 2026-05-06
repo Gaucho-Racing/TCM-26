@@ -12,6 +12,17 @@ import (
 	"time"
 )
 
+// dlcLookup maps an FDCAN DLC value (0-15) to the actual data length in bytes.
+// Values 0-8 match directly; 9-15 are CAN FD lengths (12/16/20/24/32/48/64).
+var dlcLookup = [16]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64}
+
+func dlcToBytes(dlc byte) int {
+	if int(dlc) >= len(dlcLookup) {
+		return 0
+	}
+	return dlcLookup[dlc]
+}
+
 var nodeIDMap = map[byte]string{
 	0x00: "all",
 	0x01: "debugger",
@@ -149,18 +160,20 @@ func ListenCAN(port string) {
 		// Wire format from icanspi / STM32:
 		//   [0:4]   ID
 		//   [4]     bus  (uint8)
-		//   [5]     length (uint8)
+		//   [5]     length (uint8) — actually the FDCAN DLC value, not byte count
 		//   [6:70]  data (up to 64 bytes)
 		//   [70:72] alignment padding (struct CAN is 72 bytes due to uint32 align)
-		length := buffer[5]
-		if length > 64 {
-			length = 64
-		}
-		if int(length)+6 > n {
+		//
+		// HAL FDCAN stores DataLength as the encoded DLC: 0-8 happen to match
+		// the byte count, but 9-15 encode 12/16/20/24/32/48/64 bytes (CAN FD).
+		// Convert to actual byte count here so downstream consumers see the
+		// real payload size.
+		length := dlcToBytes(buffer[5])
+		if length+6 > n {
 			utils.SugarLogger.Infof("[CAN] Payload length %d exceeds packet size %d, skipping", length, n)
 			continue
 		}
-		payload := buffer[6 : int(length)+6]
+		payload := buffer[6 : length+6]
 
 		if shouldLog {
 			utils.SugarLogger.Infof("[CAN] Bus: %d", bus)
