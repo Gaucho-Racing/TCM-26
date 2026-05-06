@@ -146,19 +146,21 @@ func ListenCAN(port string) {
 		}
 
 		bus := buffer[4] // unused
-		// The C struct CAN has a uint16_t length field at offset 6 (not 5):
-		// the compiler inserts a padding byte at offset 5 to satisfy uint16
-		// alignment after the uint8_t bus at offset 4. Payload starts at
-		// offset 8.
-		length := binary.LittleEndian.Uint16(buffer[6:8])
+		// Wire format from icanspi / STM32:
+		//   [0:4]   ID
+		//   [4]     bus  (uint8)
+		//   [5]     length (uint8)
+		//   [6:70]  data (up to 64 bytes)
+		//   [70:72] alignment padding (struct CAN is 72 bytes due to uint32 align)
+		length := buffer[5]
 		if length > 64 {
 			length = 64
 		}
-		if int(length)+8 > n {
+		if int(length)+6 > n {
 			utils.SugarLogger.Infof("[CAN] Payload length %d exceeds packet size %d, skipping", length, n)
 			continue
 		}
-		payload := buffer[8 : length+8]
+		payload := buffer[6 : int(length)+6]
 
 		if shouldLog {
 			utils.SugarLogger.Infof("[CAN] Bus: %d", bus)
