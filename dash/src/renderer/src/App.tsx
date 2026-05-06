@@ -9,7 +9,6 @@ import {
   stateClassNames,
   ECU_STATE,
 } from './lib/state';
-import { DebugMatrix } from './views/DebugMatrix';
 
 const SUBSCRIBED_SIGNALS = [
   // ECU state machine — drives Vehicle State + derived TS/RTD indicators.
@@ -49,13 +48,6 @@ const SUBSCRIBED_SIGNALS = [
 
 export default function App() {
   useSignals(SUBSCRIBED_SIGNALS);
-  return <DebugMatrix />;
-}
-
-// Production driver view — not currently rendered while we calibrate the
-// state machine. Swap this back into App() once the matrix is no longer
-// needed for live debugging.
-export function DriverView() {
   return (
     <div className="grid h-screen w-screen grid-cols-[1fr_1.6fr_1fr] gap-3 bg-neutral-950 p-4">
       <LeftColumn />
