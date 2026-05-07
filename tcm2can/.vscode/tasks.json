@@ -32,7 +32,7 @@
                 "-f",
                 "target/stm32g4x.cfg",
                 "-c",
-                "program build/Debug/bruh2.elf verify reset exit"
+                "program build/Release/bruh2.elf verify reset exit"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
