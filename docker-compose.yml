@@ -1,16 +1,21 @@
 name: tcm26
 
+# All services run on host networking. Simpler than maintaining port maps
+# and a custom bridge — every service talks to peers via localhost on the
+# default ports. The tradeoff is that running this alongside another stack
+# that also wants 1883/5432/8000/8001 will collide; that's intentional, the
+# Jetson is a dedicated host.
+
 services:
   mqtt:
     build:
       context: .
       dockerfile: mqtt/Dockerfile.dev
     restart: unless-stopped
+    network_mode: host
     depends_on:
       - db
       - nanomq
-    ports:
-      - "8000:8000/udp"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -25,12 +30,12 @@ services:
       ENV: "DEV"
       VEHICLE_ID: ${VEHICLE_ID:-GR26}
       VEHICLE_UPLOAD_KEY: ${VEHICLE_UPLOAD_KEY:-0}
-      DATABASE_HOST: db
+      DATABASE_HOST: localhost
       DATABASE_PORT: "5432"
       DATABASE_NAME: tcm26
       DATABASE_USER: postgres
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
-      LOCAL_MQTT_HOST: nanomq
+      LOCAL_MQTT_HOST: localhost
       LOCAL_MQTT_PORT: "1883"
       CLOUD_MQTT_HOST: ${CLOUD_MQTT_HOST:-}
       CLOUD_MQTT_PORT: ${CLOUD_MQTT_PORT:-1883}
@@ -41,23 +46,35 @@ services:
       CLOUD_PUBLISH_INTERVAL: ${CLOUD_PUBLISH_INTERVAL:-100}
       PING_INTERVAL: "5000"
 
+  icanspi:
+    build:
+      context: ./icanspi
+    restart: unless-stopped
+    network_mode: host
+    # libjetgpio mmaps /dev/mem and pokes the Jetson's GPIO/SPI registers
+    # directly, so it needs full hardware access. On non-Jetson hosts the
+    # container will start, fail gpioInitialise, and exit — restart will
+    # spin until it lands on real hardware.
+    privileged: true
+    depends_on:
+      - mqtt
+
   gr26:
     image: ghcr.io/gaucho-racing/mapache/gr26:latest
     restart: unless-stopped
+    network_mode: host
     depends_on:
       - db
       - nanomq
-    ports:
-      - "8001:8001"
     environment:
       ENV: "DEV"
       PORT: "8001"
       SKIP_AUTH_CHECK: "true"
       ENABLE_SIGNAL_DB: "false"
       ENABLE_SIGNAL_WS: "true"
-      MQTT_HOST: nanomq
+      MQTT_HOST: localhost
       MQTT_PORT: "1883"
-      DATABASE_HOST: db
+      DATABASE_HOST: localhost
       DATABASE_PORT: "5432"
       DATABASE_NAME: gr26
       DATABASE_USER: postgres
@@ -66,18 +83,16 @@ services:
   nanomq:
     image: emqx/nanomq:latest
     restart: unless-stopped
-    ports:
-      - "1884:1883"
+    network_mode: host
 
   db:
     image: postgres:18-alpine
     restart: unless-stopped
+    network_mode: host
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-password}
       POSTGRES_DB: tcm26
-    ports:
-      - "5433:5432"
     volumes:
       # pg18+ writes to /var/lib/postgresql/<major>/docker; mount the parent.
       - pgdata:/var/lib/postgresql
