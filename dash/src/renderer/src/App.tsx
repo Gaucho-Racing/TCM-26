@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSignals } from './hooks/useSignals';
+import { useSignals, VEHICLE_ID } from './hooks/useSignals';
 import { useSignal, useSignalStore } from './store/signals';
 import { socColor, stateLabel, stateClassNames, ECU_STATE } from './lib/state';
 
@@ -352,6 +352,7 @@ function DebugPanel() {
   return (
     <div className="flex min-h-0 flex-col gap-1.5 overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
       <SectionTitle>Debug</SectionTitle>
+      <DebugRow label="vehicle" value={VEHICLE_ID.toUpperCase()} />
       <DebugRow label="msgs" value={messageCount.toLocaleString()} />
       <DebugRow label="rate" value={`${rate.toFixed(1)} /s`} />
       <DebugRow label="signals" value={signalCount.toString()} />

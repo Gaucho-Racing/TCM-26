@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useSignalStore } from '../store/signals';
 
 const WS_URL = import.meta.env.VITE_GR26_WS_URL ?? 'ws://localhost:8001/gr26/live';
-const VEHICLE_ID = import.meta.env.VITE_GR26_VEHICLE_ID ?? 'gr26';
+export const VEHICLE_ID = import.meta.env.VITE_GR26_VEHICLE_ID ?? 'gr26';
 
 // Cap the per-signal update rate at the gr26 ingest layer so the dash
 // doesn't drown in cell signal updates. Without this, ~5 BCU cell data
