@@ -4,6 +4,14 @@
   /* slightly darker than neutral-900 — used for the cell strip background */
   --color-neutral-925: #0e0e0e;
 
+  /* Gaucho Racing brand colors — mirror Mapache dashboard
+     (Mapache/dashboard/src/consts/config.tsx → GR_COLORS). Used as
+     gradient accents (from-gr-pink to-gr-purple) for non-functional
+     branding. Functional state colors (red/amber/green) remain
+     unchanged so driver-critical signals don't get rebranded. */
+  --color-gr-pink: #e105a3;
+  --color-gr-purple: #8412fc;
+
   /* slow, subtle pulse for the active drive state */
   --animate-pulse-slow: pulse-slow 2.4s ease-in-out infinite;
   @keyframes pulse-slow {

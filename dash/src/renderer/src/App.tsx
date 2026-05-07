@@ -212,7 +212,7 @@ function SpeedPanel() {
 
   return (
     <div className="relative flex flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 px-6 py-4">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(34,211,238,0.08),transparent_70%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(132,18,252,0.10),rgba(225,5,163,0.05)_55%,transparent_75%)]" />
       <div className="relative flex flex-1 flex-col items-center justify-center">
         <div className="text-[14rem] leading-none font-black text-neutral-50 tabular-nums">
           {Math.round(speed)}
@@ -353,7 +353,12 @@ function DebugPanel() {
   return (
     <div className="flex min-h-0 flex-col gap-1.5 overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
       <SectionTitle>Debug</SectionTitle>
-      <DebugRow label="vehicle" value={VEHICLE_ID.toUpperCase()} />
+      <div className="flex items-baseline justify-between gap-2 text-lg">
+        <span className="text-base tracking-widest text-neutral-500 uppercase">vehicle</span>
+        <span className="from-gr-pink to-gr-purple bg-gradient-to-r bg-clip-text font-black tracking-widest text-transparent tabular-nums">
+          {VEHICLE_ID.toUpperCase()}
+        </span>
+      </div>
       <DebugRow label="msgs" value={messageCount.toLocaleString()} />
       <DebugRow label="rate" value={`${rate.toFixed(1)} /s`} />
       <DebugRow label="signals" value={signalCount.toString()} />
@@ -384,7 +389,7 @@ function DebugRow({ label, value, mono }: { label: string; value: string; mono?:
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-base font-bold tracking-[0.3em] text-neutral-500 uppercase">
+    <div className="from-gr-pink to-gr-purple bg-gradient-to-r bg-clip-text text-base font-bold tracking-[0.3em] text-transparent uppercase">
       {children}
     </div>
   );
