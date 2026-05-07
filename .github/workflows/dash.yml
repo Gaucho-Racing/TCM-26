@@ -40,3 +40,70 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Builds the dash for linux/arm64 (Jetson), macOS (universal), and
+  # Windows (x64) on a v* tag push, then attaches every artifact to the
+  # GitHub Release. Each matrix leg runs natively for its target platform
+  # so we don't fight cross-build toolchains. softprops/action-gh-release
+  # creates the release if missing and appends files across all jobs.
+  release:
+    needs: check
+    if: startsWith(github.ref, 'refs/tags/v')
+    name: Release ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: linux/arm64
+            runner: ubuntu-24.04-arm
+            script: build:linux
+            artifacts: |
+              dash/dist/*.deb
+              dash/dist/*.AppImage
+          - label: mac/universal
+            runner: macos-latest
+            script: build:mac
+            artifacts: |
+              dash/dist/*.dmg
+              dash/dist/*-mac.zip
+          - label: win/x64
+            runner: windows-latest
+            script: build:win
+            artifacts: |
+              dash/dist/*.exe
+              dash/dist/*-win.zip
+    defaults:
+      run:
+        working-directory: dash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: dash/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build ${{ matrix.label }}
+        run: npm run ${{ matrix.script }}
+        env:
+          # electron-builder will silently try to publish to GitHub if
+          # GH_TOKEN is set; we publish via softprops below so disable
+          # the built-in publisher.
+          GH_TOKEN: ""
+          ELECTRON_BUILDER_PUBLISH: "never"
+
+      - name: Attach artifacts to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifacts }}
+          fail_on_unmatched_files: true
+          generate_release_notes: true
