@@ -90,6 +90,16 @@ func PublishCloud(topic string, qos byte, retained bool, payload []byte) {
 }
 
 func publishOne(client mq.Client, label, topic string, qos byte, retained bool, payload []byte) {
+	// Skip if the client isn't currently connected. Without this, paho
+	// buffers the message in its internal queue and (especially during
+	// the startup race when the cloud client is still handshaking) can
+	// end up in a state where the token never resolves and the message
+	// is silently lost — the symptom we hit needing a `compose down`
+	// to clear. Cloud is best-effort anyway, dropping is cheaper than a
+	// stuck queue.
+	if !client.IsConnected() {
+		return
+	}
 	token := client.Publish(topic, qos, retained, payload)
 	go func() {
 		if !token.WaitTimeout(2 * time.Second) {
