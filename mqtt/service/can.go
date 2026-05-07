@@ -80,12 +80,23 @@ func PublishData(canID uint32, nodeID uint8, messageID uint16, targetID uint8, d
 
 	// Throttle each broker independently — local can run high-rate for the
 	// dash, cloud stays cellular-friendly.
+	//
+	// Local: QoS 1 + retained. Localhost is fast, retained lets tcm-gr26
+	// pick up the last value per topic immediately if it restarts.
+	//
+	// Cloud: QoS 0, retain=false. Cellular links congest under QoS 1's
+	// per-message PUBACK round-trip; one slow ack stalls the whole
+	// outbound queue and 2s later we get a flood of `Publish to ...
+	// timed out` warnings for messages that did eventually arrive.
+	// Mapache stays subscribed so retain buys nothing on the cloud side
+	// either. Drop the bookkeeping, trade reliability for throughput —
+	// next CAN frame is 100ms behind anyway.
 	canIDString := fmt.Sprintf("%d", canID)
 	if shouldPublishOn(canIDString, timestamp, config.LastLocalPublish, config.LocalPublishIntervalInt) {
 		mqtt.PublishLocal(topic, 1, true, buf.Bytes())
 	}
 	if shouldPublishOn(canIDString, timestamp, config.LastCloudPublish, config.CloudPublishIntervalInt) {
-		mqtt.PublishCloud(topic, 1, true, buf.Bytes())
+		mqtt.PublishCloud(topic, 0, false, buf.Bytes())
 	}
 }
 
