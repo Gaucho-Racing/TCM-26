@@ -5,10 +5,11 @@ Documentation=https://github.com/Gaucho-Racing/TCM-26
 [Timer]
 # Fire 1 min after boot — gives the network and NTP time to actually
 # come up. Trying at 10s was too eager; the update would always fail
-# the first time on a freshly booted car. After that, every 6h so
-# cars left on for a long session still pick up new releases.
+# the first time on a freshly booted car. After that, every 15 min so
+# a car that boots offline (no wifi yet, or short session) still has
+# multiple chances to pick up a new release within a typical session.
 OnBootSec=1min
-OnUnitActiveSec=6h
+OnUnitActiveSec=15min
 # If the system was off when a fire was scheduled, run it on next boot.
 Persistent=true
 
