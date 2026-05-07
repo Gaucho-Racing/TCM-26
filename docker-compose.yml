@@ -5,13 +5,19 @@ name: tcm26
 # default ports. The tradeoff is that running this alongside another stack
 # that also wants 1883/5432/8000/8001 will collide; that's intentional, the
 # Jetson is a dedicated host.
+#
+# This file is the dev-friendly compose: no restart policy, so when a
+# container crashes it stays down and you can read the failure mode in
+# `docker compose logs`. For the on-vehicle production install, layer
+# docker-compose.prod.yml on top to add `restart: always` everywhere:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 services:
   mqtt:
     build:
       context: .
       dockerfile: mqtt/Dockerfile.dev
-    restart: unless-stopped
     network_mode: host
     depends_on:
       - db
@@ -49,12 +55,12 @@ services:
   icanspi:
     build:
       context: ./icanspi
-    restart: unless-stopped
     network_mode: host
     # libjetgpio mmaps /dev/mem and pokes the Jetson's GPIO/SPI registers
     # directly, so it needs full hardware access. On non-Jetson hosts the
-    # container will start, fail gpioInitialise, and exit — restart will
-    # spin until it lands on real hardware.
+    # container starts, fails gpioInitialise, and exits — and stays
+    # exited under this dev compose. The prod overlay adds restart so
+    # it'll keep retrying.
     privileged: true
     volumes:
       # libjetgpio runs `modprobe spidev` at init. modprobe (in the image
@@ -66,7 +72,6 @@ services:
 
   gr26:
     image: ghcr.io/gaucho-racing/mapache/gr26:latest
-    restart: unless-stopped
     network_mode: host
     depends_on:
       - db
@@ -87,12 +92,10 @@ services:
 
   nanomq:
     image: emqx/nanomq:latest
-    restart: unless-stopped
     network_mode: host
 
   db:
     image: postgres:18-alpine
-    restart: unless-stopped
     network_mode: host
     environment:
       POSTGRES_USER: postgres
