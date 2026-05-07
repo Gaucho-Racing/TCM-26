@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSignals } from './hooks/useSignals';
 import { useSignal, useSignalStore } from './store/signals';
 import { socColor, stateLabel, stateClassNames, ECU_STATE } from './lib/state';
@@ -28,7 +28,10 @@ const SUBSCRIBED_SIGNALS = [
   // TCM connectivity from the relay's TCM Status (0x029).
   'tcm_connection_ok',
   'tcm_mqtt_ok',
+  'tcm_epic_shelter_ok',
+  'tcm_camera_ok',
   'tcm_mapache_ping',
+  'tcm_cache_size',
 ] as const;
 
 // Staleness threshold for the warning badge — anything more than this
@@ -62,8 +65,10 @@ function LeftColumn() {
 }
 
 function RightColumn() {
+  // Connections shrinks to ~1/3, debug expands to ~2/3 — bigger text
+  // there + room for the extra rows.
   return (
-    <div className="grid min-h-0 grid-rows-2 gap-3">
+    <div className="grid min-h-0 grid-rows-[auto_1fr] gap-3">
       <ConnectionsPanel />
       <DebugPanel />
     </div>
@@ -109,8 +114,8 @@ function Indicator({ label, active }: { label: string; active: boolean }) {
 type SafetyStatus = 'ok' | 'latched' | 'warn';
 
 function safetyStatus(warn: boolean, latched: boolean): SafetyStatus {
-  if (warn) return 'warn'; // active fault, no matter the latch state
-  if (latched) return 'latched'; // recovered but the latch tells the story
+  if (warn) return 'warn';
+  if (latched) return 'latched';
   return 'ok';
 }
 
@@ -143,8 +148,6 @@ function SafetyTile({
   status: SafetyStatus;
   latched: boolean;
 }) {
-  // Green = clean. Yellow = recovered but the latch fired at some point.
-  // Red (pulsing) = currently faulting.
   const styles =
     status === 'warn'
       ? 'animate-pulse border-red-500/60 bg-red-500/20 text-red-300 shadow-[0_0_24px_-4px_rgb(239_68_68/0.7)]'
@@ -226,6 +229,34 @@ function SpeedPanel() {
 
 type ConnStatus = 'ok' | 'warn' | 'down';
 
+const STATUS_DOT: Record<ConnStatus, string> = {
+  ok: 'bg-emerald-400 shadow-[0_0_10px_rgb(52_211_153/0.9)]',
+  warn: 'bg-amber-400 shadow-[0_0_10px_rgb(251_191_36/0.9)]',
+  down: 'bg-red-500 shadow-[0_0_10px_rgb(239_68_68/0.9)] animate-pulse',
+};
+
+const STATUS_TEXT: Record<ConnStatus, string> = {
+  ok: 'text-emerald-300',
+  warn: 'text-amber-300',
+  down: 'text-red-300',
+};
+
+// Compact connection row — colored dot + label + value, all on one line.
+// Replaces the old tile-style pills so the panel can shrink.
+function ConnRow({ label, status, value }: { label: string; status: ConnStatus; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2 text-base">
+      <div className="flex items-center gap-2">
+        <span className={`h-2.5 w-2.5 rounded-full ${STATUS_DOT[status]}`} />
+        <span className="font-bold tracking-widest text-neutral-300">{label}</span>
+      </div>
+      <span className={`font-mono text-sm font-bold tabular-nums ${STATUS_TEXT[status]}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function ConnectionsPanel() {
   const wsConnected = useSignalStore((s) => s.connected);
   const cloudConnOk = useSignal('tcm_connection_ok') > 0;
@@ -233,55 +264,22 @@ function ConnectionsPanel() {
   const cloudPing = useSignal('tcm_mapache_ping');
   const cloudUp = cloudConnOk && cloudMqttOk;
 
-  // Cloud is yellow when up but high-latency, green when up and snappy,
-  // red otherwise.
   const cloudStatus: ConnStatus = !cloudUp
     ? 'down'
     : cloudPing > CLOUD_PING_WARN_MS
       ? 'warn'
       : 'ok';
-
   const localStatus: ConnStatus = wsConnected ? 'ok' : 'down';
 
   return (
-    <div className="flex min-h-0 flex-col gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
+    <div className="flex min-h-0 flex-col gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 px-3 py-2">
       <SectionTitle>Connections</SectionTitle>
-      <div className="grid flex-1 grid-cols-2 gap-2">
-        <ConnPill label="LOCAL" status={localStatus} subtitle={wsConnected ? 'WS' : 'down'} />
-        <ConnPill
-          label="CLOUD"
-          status={cloudStatus}
-          subtitle={cloudUp ? `${Math.round(cloudPing)} ms` : 'down'}
-        />
-      </div>
-    </div>
-  );
-}
-
-function ConnPill({
-  label,
-  status,
-  subtitle,
-}: {
-  label: string;
-  status: ConnStatus;
-  subtitle?: string;
-}) {
-  const styles =
-    status === 'ok'
-      ? 'border-emerald-400/50 bg-emerald-500/15 text-emerald-300 shadow-[0_0_18px_-6px_rgb(52_211_153/0.6)]'
-      : status === 'warn'
-        ? 'border-amber-400/60 bg-amber-500/15 text-amber-300 shadow-[0_0_22px_-6px_rgb(251_191_36/0.7)]'
-        : 'animate-pulse border-red-500/60 bg-red-500/20 text-red-300 shadow-[0_0_24px_-4px_rgb(239_68_68/0.7)]';
-
-  return (
-    <div className={`flex flex-col items-center justify-center rounded-xl border ${styles}`}>
-      <div className="text-base leading-none font-black tracking-widest">{label}</div>
-      {subtitle && (
-        <div className="mt-1 text-[10px] font-semibold tracking-widest uppercase opacity-80">
-          {subtitle}
-        </div>
-      )}
+      <ConnRow label="LOCAL" status={localStatus} value={wsConnected ? 'connected' : 'down'} />
+      <ConnRow
+        label="CLOUD"
+        status={cloudStatus}
+        value={cloudUp ? `${Math.round(cloudPing)} ms` : 'down'}
+      />
     </div>
   );
 }
@@ -290,25 +288,37 @@ function DebugPanel() {
   const messageCount = useSignalStore((s) => s.messageCount);
   const lastSignalName = useSignalStore((s) => s.lastSignalName);
   const lastSignalAt = useSignalStore((s) => s.lastSignalAt);
+  const signalCount = useSignalStore((s) => Object.keys(s.signals).length);
+  const epicShelterOk = useSignal('tcm_epic_shelter_ok');
+  const cameraOk = useSignal('tcm_camera_ok');
+  const cacheSize = useSignal('tcm_cache_size');
+  const ping = useSignal('tcm_mapache_ping');
   const now = useNow();
   const ageMs = lastSignalAt ? now - lastSignalAt : -1;
+  const rate = useMessageRate();
 
   return (
-    <div className="flex min-h-0 flex-col gap-1 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
+    <div className="flex min-h-0 flex-col gap-1.5 overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
       <SectionTitle>Debug</SectionTitle>
       <DebugRow label="msgs" value={messageCount.toLocaleString()} />
-      <DebugRow label="last" value={lastSignalName || '—'} mono />
+      <DebugRow label="rate" value={`${rate.toFixed(1)} /s`} />
+      <DebugRow label="signals" value={signalCount.toString()} />
       <DebugRow label="age" value={ageMs >= 0 ? `${(ageMs / 1000).toFixed(1)}s` : '—'} />
+      <DebugRow label="last" value={lastSignalName || '—'} mono />
+      <DebugRow label="ping" value={`${Math.round(ping)} ms`} />
+      <DebugRow label="cache" value={cacheSize.toString()} />
+      <DebugRow label="shelter" value={epicShelterOk ? 'ok' : '—'} />
+      <DebugRow label="camera" value={cameraOk ? 'ok' : '—'} />
     </div>
   );
 }
 
 function DebugRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-2 text-xs">
-      <span className="tracking-widest text-neutral-500 uppercase">{label}</span>
+    <div className="flex items-baseline justify-between gap-2 text-base">
+      <span className="text-sm tracking-widest text-neutral-500 uppercase">{label}</span>
       <span
-        className={`text-neutral-200 tabular-nums ${mono ? 'truncate font-mono text-[10px]' : ''}`}
+        className={`text-neutral-100 tabular-nums ${mono ? 'truncate font-mono text-xs' : 'font-bold'}`}
       >
         {value}
       </span>
@@ -318,9 +328,6 @@ function DebugRow({ label, value, mono }: { label: string; value: string; mono?:
 
 // ───────────────────── stale-data badge ─────────────────────
 
-// Floating warning that pops up when no signal has arrived in
-// STALE_THRESHOLD_MS. Tells the driver and the pit instantly that
-// what's on the dash isn't fresh.
 function StaleWarning() {
   const lastSignalAt = useSignalStore((s) => s.lastSignalAt);
   const now = useNow();
@@ -330,9 +337,9 @@ function StaleWarning() {
 
   const ageLabel = Number.isFinite(ageMs) ? `${(ageMs / 1000).toFixed(1)}s` : '∞';
   return (
-    <div className="pointer-events-none absolute top-3 right-3 z-50 flex animate-pulse items-center gap-2 rounded-xl border-2 border-amber-400/70 bg-amber-500/20 px-3 py-1 text-amber-300 shadow-[0_0_24px_-4px_rgb(251_191_36/0.8)]">
-      <span className="text-lg">⚠</span>
-      <span className="text-sm font-black tracking-widest">STALE {ageLabel}</span>
+    <div className="pointer-events-none absolute right-3 bottom-3 z-50 flex animate-pulse items-center gap-2 rounded-xl border-2 border-amber-400/70 bg-amber-500/20 px-4 py-2 text-amber-300 shadow-[0_0_24px_-4px_rgb(251_191_36/0.8)]">
+      <span className="text-2xl">⚠</span>
+      <span className="text-base font-black tracking-widest">STALE {ageLabel}</span>
     </div>
   );
 }
@@ -341,9 +348,7 @@ function StaleWarning() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10px] font-bold tracking-[0.3em] text-neutral-500 uppercase">
-      {children}
-    </div>
+    <div className="text-xs font-bold tracking-[0.3em] text-neutral-500 uppercase">{children}</div>
   );
 }
 
@@ -357,4 +362,22 @@ function useNow(intervalMs: number = 250): number {
     return () => clearInterval(id);
   }, [intervalMs]);
   return now;
+}
+
+// Rolling messages-per-second counter. Updates once per second from the
+// useNow tick, so it's cheap and stable on screen.
+function useMessageRate(): number {
+  const messageCount = useSignalStore((s) => s.messageCount);
+  const now = useNow();
+  const last = useRef({ count: messageCount, time: now, rate: 0 });
+
+  if (now - last.current.time >= 1000) {
+    const dt = (now - last.current.time) / 1000;
+    last.current = {
+      count: messageCount,
+      time: now,
+      rate: (messageCount - last.current.count) / dt,
+    };
+  }
+  return last.current.rate;
 }
