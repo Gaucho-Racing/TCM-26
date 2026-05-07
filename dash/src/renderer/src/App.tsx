@@ -34,12 +34,13 @@ const SUBSCRIBED_SIGNALS = [
   'tcm_cache_size',
 ] as const;
 
-// LOCAL pill thresholds. WS open + last signal under STALE_MS → green.
-// Between STALE_MS and DOWN_MS → yellow. Past DOWN_MS or WS closed → red.
-// 6s/15s leaves room for an idle car where only TCM Status (5s cadence)
-// is flowing, while still catching a real outage within ~6s.
+// LOCAL pill threshold. WS open + last signal under STALE_MS → green;
+// past it → yellow ("stale Ns"). The WS being open already means the
+// dash↔tcm-gr26 pipe is alive, so we never use red for "open but no
+// fresh data" — that's the warn state. Red is reserved for WS actually
+// closed. 6s leaves room for an idle car where only TCM Status (5s
+// cadence) is flowing while still catching a real upstream outage fast.
 const LOCAL_STALE_MS = 6000;
-const LOCAL_DOWN_MS = 15000;
 // CLOUD freshness — TCM Status publishes every 5s (currently). If we
 // haven't seen one in 3× the interval, demote to yellow regardless of
 // the cached bit values.
@@ -277,21 +278,27 @@ function ConnectionsPanel() {
   const tcmReceivedAt = useSignalStore((s) => s.signals['tcm_mqtt_ok']?.receivedAt);
   const now = useNow();
 
-  // LOCAL: WS state + freshness of any signal. WS open with no data is
-  // a partial outage; we want to surface it.
+  // LOCAL: only `down` when the WS is actually closed. With WS open,
+  // four-state ladder driven by signal freshness:
+  //   - no signal seen yet → unknown ('no data')
+  //   - stale (>6s)        → warn   ('stale Ns')
+  //   - fresh              → ok     ('connected')
   const localAge = lastSignalAt ? now - lastSignalAt : Infinity;
-  const localStatus: ConnStatus = !wsConnected
-    ? 'down'
-    : localAge > LOCAL_DOWN_MS
-      ? 'down'
-      : localAge > LOCAL_STALE_MS
-        ? 'warn'
-        : 'ok';
-  const localValue = !wsConnected
-    ? 'down'
-    : localAge > LOCAL_STALE_MS
-      ? `stale ${(localAge / 1000).toFixed(0)}s`
-      : 'connected';
+  let localStatus: ConnStatus;
+  let localValue: string;
+  if (!wsConnected) {
+    localStatus = 'down';
+    localValue = 'down';
+  } else if (!lastSignalAt) {
+    localStatus = 'unknown';
+    localValue = 'no data';
+  } else if (localAge > LOCAL_STALE_MS) {
+    localStatus = 'warn';
+    localValue = `stale ${(localAge / 1000).toFixed(0)}s`;
+  } else {
+    localStatus = 'ok';
+    localValue = 'connected';
+  }
 
   // CLOUD: never-received → unknown. Recent TCM Status with healthy
   // bits → ok (or yellow if ping > 500ms). Recent TCM Status but bits
