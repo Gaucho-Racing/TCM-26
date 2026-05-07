@@ -119,17 +119,18 @@ function Indicator({ label, active }: { label: string; active: boolean }) {
 }
 
 // Safety latch tri-state. The ECU exposes two bits per system: an
-// active-fault bit (`ecu_led_X`) and a sticky latch bit
-// (`ecu_led_X_latch`) that stays set until the driver manually resets
-// it. Active fault wins regardless of latch state. With no active
-// fault, a set latch means "fault was here, manual reset required" —
-// shown yellow as 'unlatched'. Clean + clean → green 'latched' (armed).
+// active-fault bit (`ecu_led_X`) and an armed-latch bit
+// (`ecu_led_X_latch`). The latch bit is 1 in the safe/armed state and
+// drops to 0 when a fault trips it; it must be manually reset back to
+// 1. Active fault wins regardless of latch. No fault + armed latch →
+// green 'latched' (safe). No fault + tripped latch → yellow
+// 'unlatched' (fault cleared, manual reset required).
 type SafetyStatus = 'latched' | 'unlatched' | 'warn';
 
 function safetyStatus(warn: boolean, latched: boolean): SafetyStatus {
   if (warn) return 'warn';
-  if (latched) return 'unlatched';
-  return 'latched';
+  if (latched) return 'latched';
+  return 'unlatched';
 }
 
 function SafetyPanel() {
