@@ -70,7 +70,7 @@ struct CAN{
     struct{
       uint32_t ID;
       uint8_t bus;
-      uint16_t length;
+      uint8_t length;
       uint8_t data[64];
     }split;
   }combined;
@@ -154,6 +154,10 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    // struct CAN *tmp2 = circularBufferPop(cb);
+    // if (tmp2 != NULL){
+    //   HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
+    // }
     if(wTransferState == TRANSFER_COMPLETE)
     {
       struct CAN *tmp2 = circularBufferPop(cb);
@@ -164,9 +168,11 @@ int main(void)
         temp = (length >> 1) + (length % 2) + 3;
         HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)tmp2, (uint8_t *)RxData, temp);
         GPIOA->BRR = (uint32_t)GPIO_PIN_4;
-
+        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
       }
     }
+    // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
+    // HAL_Delay(100);
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -185,13 +191,14 @@ void SystemClock_Config(void)
   {
   }
   LL_PWR_EnableRange1BoostMode();
-  LL_RCC_HSE_Enable();
-   /* Wait till HSE is ready */
-  while(LL_RCC_HSE_IsReady() != 1)
+  LL_RCC_HSI_Enable();
+   /* Wait till HSI is ready */
+  while(LL_RCC_HSI_IsReady() != 1)
   {
   }
 
-  LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSE, LL_RCC_PLLM_DIV_1, 40, LL_RCC_PLLR_DIV_2);
+  LL_RCC_HSI_SetCalibTrimming(64);
+  LL_RCC_PLL_ConfigDomain_SYS(LL_RCC_PLLSOURCE_HSI, LL_RCC_PLLM_DIV_1, 20, LL_RCC_PLLR_DIV_2);
   LL_RCC_PLL_EnableDomain_SYS();
   LL_RCC_PLL_Enable();
    /* Wait till PLL is ready */
