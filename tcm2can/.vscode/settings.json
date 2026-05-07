@@ -8,5 +8,7 @@
         "mlx90640_i2c_driver.h": "c",
         "circularbuffer.h": "c"
     },
+    "cortex-debug.gdbPath": "/usr/bin/gdb-multiarch",
+    "cortex-debug.armToolchainPath": "/usr",
     "cortex-debug.variableUseNaturalFormat": false
 }
