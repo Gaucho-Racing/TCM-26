@@ -55,6 +55,20 @@ func newClient(label, host, port, user, password string, connectRetry bool) mq.C
 	opts.SetReconnectingHandler(onReconnectFn(label))
 	opts.SetMaxReconnectInterval(30 * time.Second)
 	opts.SetOrderMatters(false)
+	// Aggressive timeouts so a wedged cloud connection self-heals instead
+	// of silently locking up the publish path:
+	//   - WriteTimeout: deadline on each TCP write. If paho can't drain
+	//     into the kernel buffer in 5s, the write returns an error and
+	//     paho tears the connection down; AutoReconnect then re-establishes
+	//     it. Without this default is 30s, long enough for paho's
+	//     internal message channel to fill and start blocking Publish()
+	//     calls in user goroutines — which is exactly what was wedging
+	//     tcm-mqtt and only `docker restart` was clearing.
+	//   - KeepAlive + PingTimeout: detect dead connections in ~12s instead
+	//     of the 30s default. CLOUD pill responds faster to real outages.
+	opts.SetWriteTimeout(5 * time.Second)
+	opts.SetKeepAlive(10 * time.Second)
+	opts.SetPingTimeout(2 * time.Second)
 	// ConnectRetry retries the initial connection (paho's AutoReconnect only
 	// kicks in after a successful first connect, so we need this explicitly
 	// for callers that may start before their broker is available).
