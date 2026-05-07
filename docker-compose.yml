@@ -8,10 +8,9 @@ name: tcm26
 #
 # This file is the dev-friendly compose: no restart policy, so when a
 # container crashes it stays down and you can read the failure mode in
-# `docker compose logs`. For the on-vehicle production install, layer
-# docker-compose.prod.yml on top to add `restart: always` everywhere:
-#
-#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# `docker compose logs`. The on-vehicle Jetson install layers an overlay
+# from the jetson-infra repo on top of this file, which adds
+# `restart: always` to every service.
 
 services:
   mqtt:
@@ -59,8 +58,8 @@ services:
     # libjetgpio mmaps /dev/mem and pokes the Jetson's GPIO/SPI registers
     # directly, so it needs full hardware access. On non-Jetson hosts the
     # container starts, fails gpioInitialise, and exits — and stays
-    # exited under this dev compose. The prod overlay adds restart so
-    # it'll keep retrying.
+    # exited under this dev compose. The jetson-infra overlay adds
+    # `restart: always` so it'll keep retrying on the Jetson itself.
     privileged: true
     volumes:
       # libjetgpio runs `modprobe spidev` at init. modprobe (in the image
