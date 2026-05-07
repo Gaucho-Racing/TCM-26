@@ -4,6 +4,17 @@
   "description": "GR26 on-vehicle dashboard for the driver display",
   "main": "./out/main/index.js",
   "type": "module",
+  "author": {
+    "name": "Gaucho Racing",
+    "email": "ucsbgauchoracing@gmail.com",
+    "url": "https://gauchoracing.com"
+  },
+  "homepage": "https://github.com/Gaucho-Racing/TCM-26",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gaucho-Racing/TCM-26.git"
+  },
+  "license": "MIT",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",

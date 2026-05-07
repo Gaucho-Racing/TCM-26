@@ -24,6 +24,10 @@ linux:
         - arm64
         - x64
   category: Utility
+  vendor: Gaucho Racing
+  maintainer: Gaucho Racing <ucsbgauchoracing@gmail.com>
+  synopsis: GR26 driver dashboard
+  description: On-vehicle Electron driver display for the GR26 race car.
   desktop:
     Name: GR26 Dash
     Comment: On-vehicle driver display
@@ -56,8 +60,13 @@ win:
       arch: x64
     - target: zip
       arch: x64
+  publisherName: Gaucho Racing
 
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  shortcutName: GR26 Dash
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  menuCategory: Gaucho Racing
