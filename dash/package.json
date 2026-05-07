@@ -1,6 +1,6 @@
 {
   "name": "gr26-dash",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "GR26 on-vehicle dashboard for the driver display",
   "main": "./out/main/index.js",
   "type": "module",
