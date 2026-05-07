@@ -22,11 +22,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # only tags releases occasionally (latest tag at time of writing is
 # v1.2); the SHA gives us a precise pin to whatever's current.
 ARG JETGPIO_REF=c69401c4a798aa4ecd058696509dd01011a8976b
+# JETGPIO's default `make` target runs ./get_chip_id which mmap's
+# /dev/mem at build time to detect the Jetson model — that won't work
+# inside Docker. Sidestep it by calling the per-model target directly
+# (orin/orinagx/nano/xavier) and installing the resulting .so by hand.
+# Override at build time:  --build-arg JETSON_MODEL=orinagx
+ARG JETSON_MODEL=orin
 RUN git clone https://github.com/Rubberazer/JETGPIO.git /tmp/jetgpio \
   && cd /tmp/jetgpio \
   && git checkout "${JETGPIO_REF}" \
-  && make \
-  && make install
+  && make "${JETSON_MODEL}" \
+  && install -m 0755 libjetgpio.so /usr/lib/ \
+  && install -m 0644 jetgpio.h /usr/include/ \
+  && ldconfig
 
 WORKDIR /app
 COPY . ./
