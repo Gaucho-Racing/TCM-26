@@ -20,8 +20,11 @@ const (
 )
 
 // Treat the cloud connection as healthy if a pong was received within
-// this window. Anything older means cloud is stale or down.
-const cloudPongFreshness = 30 * time.Second
+// this window. Pings go every 5s (PING_INTERVAL); 10s lets one ping
+// miss before we flip the bit, which is responsive without being
+// flappy on a single dropped packet. (Was 30s — too generous: cloud
+// could be down for half a minute before the dash noticed.)
+const cloudPongFreshness = 10 * time.Second
 
 // InitializeTCMStatus publishes a TCM Status (0x029) message every 5s
 // summarizing cloud broker connectivity for the dash.

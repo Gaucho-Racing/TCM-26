@@ -3,8 +3,12 @@ import { create } from 'zustand';
 export interface Signal {
   value: number;
   rawValue: number;
+  // Timestamp from the relay (microseconds, relay's wall clock).
   timestamp: number;
   producedAt: string;
+  // Dash-local wall-clock millis when this signal was received. Used for
+  // freshness checks since relay/dash clocks can drift independently.
+  receivedAt: number;
 }
 
 interface SignalStore {

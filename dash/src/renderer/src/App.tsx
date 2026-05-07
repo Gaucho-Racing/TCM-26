@@ -34,10 +34,17 @@ const SUBSCRIBED_SIGNALS = [
   'tcm_cache_size',
 ] as const;
 
-// Staleness threshold for the warning badge — anything more than this
-// since the last incoming signal triggers the corner overlay.
-const STALE_THRESHOLD_MS = 1000;
-// Cloud latency above this gets a yellow tile instead of green.
+// LOCAL pill thresholds. WS open + last signal under STALE_MS → green.
+// Between STALE_MS and DOWN_MS → yellow. Past DOWN_MS or WS closed → red.
+// 6s/15s leaves room for an idle car where only TCM Status (5s cadence)
+// is flowing, while still catching a real outage within ~6s.
+const LOCAL_STALE_MS = 6000;
+const LOCAL_DOWN_MS = 15000;
+// CLOUD freshness — TCM Status publishes every 5s (currently). If we
+// haven't seen one in 3× the interval, demote to yellow regardless of
+// the cached bit values.
+const TCM_STATUS_STALE_MS = 15000;
+// Cloud latency above this gets a yellow pill instead of green.
 const CLOUD_PING_WARN_MS = 500;
 
 // ─────────────────────── App ───────────────────────
@@ -49,7 +56,6 @@ export default function App() {
       <LeftColumn />
       <SpeedPanel />
       <RightColumn />
-      <StaleWarning />
     </div>
   );
 }
@@ -227,18 +233,20 @@ function SpeedPanel() {
 
 // ───────────────────────── RIGHT ─────────────────────────
 
-type ConnStatus = 'ok' | 'warn' | 'down';
+type ConnStatus = 'ok' | 'warn' | 'down' | 'unknown';
 
 const STATUS_DOT: Record<ConnStatus, string> = {
   ok: 'bg-emerald-400 shadow-[0_0_10px_rgb(52_211_153/0.9)]',
   warn: 'bg-amber-400 shadow-[0_0_10px_rgb(251_191_36/0.9)]',
   down: 'bg-red-500 shadow-[0_0_10px_rgb(239_68_68/0.9)] animate-pulse',
+  unknown: 'bg-neutral-600',
 };
 
 const STATUS_TEXT: Record<ConnStatus, string> = {
   ok: 'text-emerald-300',
   warn: 'text-amber-300',
   down: 'text-red-300',
+  unknown: 'text-neutral-500',
 };
 
 // Compact connection row — colored dot + label + value, all on one line.
@@ -259,27 +267,62 @@ function ConnRow({ label, status, value }: { label: string; status: ConnStatus; 
 
 function ConnectionsPanel() {
   const wsConnected = useSignalStore((s) => s.connected);
+  const lastSignalAt = useSignalStore((s) => s.lastSignalAt);
   const cloudConnOk = useSignal('tcm_connection_ok') > 0;
   const cloudMqttOk = useSignal('tcm_mqtt_ok') > 0;
   const cloudPing = useSignal('tcm_mapache_ping');
-  const cloudUp = cloudConnOk && cloudMqttOk;
+  // We use any tcm_* signal's receivedAt as a proxy for "when did the
+  // last TCM Status arrive". TCM Status publishes all of its bits +
+  // ping in one CAN frame, so any of them stamp the same instant.
+  const tcmReceivedAt = useSignalStore((s) => s.signals['tcm_mqtt_ok']?.receivedAt);
+  const now = useNow();
 
-  const cloudStatus: ConnStatus = !cloudUp
+  // LOCAL: WS state + freshness of any signal. WS open with no data is
+  // a partial outage; we want to surface it.
+  const localAge = lastSignalAt ? now - lastSignalAt : Infinity;
+  const localStatus: ConnStatus = !wsConnected
     ? 'down'
-    : cloudPing > CLOUD_PING_WARN_MS
-      ? 'warn'
-      : 'ok';
-  const localStatus: ConnStatus = wsConnected ? 'ok' : 'down';
+    : localAge > LOCAL_DOWN_MS
+      ? 'down'
+      : localAge > LOCAL_STALE_MS
+        ? 'warn'
+        : 'ok';
+  const localValue = !wsConnected
+    ? 'down'
+    : localAge > LOCAL_STALE_MS
+      ? `stale ${(localAge / 1000).toFixed(0)}s`
+      : 'connected';
+
+  // CLOUD: never-received → unknown. Recent TCM Status with healthy
+  // bits → ok (or yellow if ping > 500ms). Recent TCM Status but bits
+  // say down → down. TCM Status itself stale → yellow regardless of
+  // cached bit values (we don't trust them once they age out).
+  const cloudUp = cloudConnOk && cloudMqttOk;
+  const tcmAge = tcmReceivedAt === undefined ? Infinity : now - tcmReceivedAt;
+  let cloudStatus: ConnStatus;
+  let cloudValue: string;
+  if (tcmReceivedAt === undefined) {
+    cloudStatus = 'unknown';
+    cloudValue = 'no status';
+  } else if (tcmAge > TCM_STATUS_STALE_MS) {
+    cloudStatus = 'warn';
+    cloudValue = `stale ${(tcmAge / 1000).toFixed(0)}s`;
+  } else if (!cloudUp) {
+    cloudStatus = 'down';
+    cloudValue = 'down';
+  } else if (cloudPing > CLOUD_PING_WARN_MS) {
+    cloudStatus = 'warn';
+    cloudValue = `${Math.round(cloudPing)} ms`;
+  } else {
+    cloudStatus = 'ok';
+    cloudValue = `${Math.round(cloudPing)} ms`;
+  }
 
   return (
     <div className="flex min-h-0 flex-col gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 px-3 py-2">
       <SectionTitle>Connections</SectionTitle>
-      <ConnRow label="LOCAL" status={localStatus} value={wsConnected ? 'connected' : 'down'} />
-      <ConnRow
-        label="CLOUD"
-        status={cloudStatus}
-        value={cloudUp ? `${Math.round(cloudPing)} ms` : 'down'}
-      />
+      <ConnRow label="LOCAL" status={localStatus} value={localValue} />
+      <ConnRow label="CLOUD" status={cloudStatus} value={cloudValue} />
     </div>
   );
 }
@@ -322,24 +365,6 @@ function DebugRow({ label, value, mono }: { label: string; value: string; mono?:
       >
         {value}
       </span>
-    </div>
-  );
-}
-
-// ───────────────────── stale-data badge ─────────────────────
-
-function StaleWarning() {
-  const lastSignalAt = useSignalStore((s) => s.lastSignalAt);
-  const now = useNow();
-  const ageMs = lastSignalAt ? now - lastSignalAt : Infinity;
-
-  if (ageMs <= STALE_THRESHOLD_MS) return null;
-
-  const ageLabel = Number.isFinite(ageMs) ? `${(ageMs / 1000).toFixed(1)}s` : '∞';
-  return (
-    <div className="pointer-events-none absolute right-3 bottom-3 z-50 flex animate-pulse items-center gap-2 rounded-xl border-2 border-amber-400/70 bg-amber-500/20 px-4 py-2 text-amber-300 shadow-[0_0_24px_-4px_rgb(251_191_36/0.8)]">
-      <span className="text-2xl">⚠</span>
-      <span className="text-base font-black tracking-widest">STALE {ageLabel}</span>
     </div>
   );
 }

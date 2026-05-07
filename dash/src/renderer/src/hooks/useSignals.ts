@@ -61,6 +61,9 @@ export function useSignals(signalNames: readonly string[]): void {
             rawValue: sig.raw_value,
             timestamp: sig.timestamp,
             producedAt: sig.produced_at,
+            // Stamp dash-local receive time here so freshness checks
+            // don't depend on clock sync between dash and relay.
+            receivedAt: Date.now(),
           });
         } catch (err) {
           console.warn('[gr26] bad message', err, e.data);
