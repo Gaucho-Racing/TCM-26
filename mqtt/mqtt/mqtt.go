@@ -104,26 +104,32 @@ func PublishCloud(topic string, qos byte, retained bool, payload []byte) {
 }
 
 func publishOne(client mq.Client, label, topic string, qos byte, retained bool, payload []byte) {
-	// Skip if the client isn't currently connected. Without this, paho
-	// buffers the message in its internal queue and (especially during
-	// the startup race when the cloud client is still handshaking) can
-	// end up in a state where the token never resolves and the message
-	// is silently lost — the symptom we hit needing a `compose down`
-	// to clear. Cloud is best-effort anyway, dropping is cheaper than a
-	// stuck queue.
+	// Skip while disconnected — fast-path so we don't add to paho's
+	// internal queue during a (re)connect window.
 	if !client.IsConnected() {
 		return
 	}
+	// Synchronous wait on the token — same shape as TCM-25's working
+	// publish path. The async-goroutine variant we had before removed
+	// the natural backpressure: when cloud is slow, paho's internal
+	// outbound channel fills, then `client.Publish(...)` calls start
+	// blocking at the channel-send level inside paho, which wedges
+	// any goroutine that calls Publish (pings, TCM Status, CAN). Only
+	// `docker restart mqtt` cleared the wedge.
+	//
+	// Blocking the caller here rate-limits publishes naturally: if the
+	// broker is slow, callers queue up waiting in their own goroutines
+	// (CAN frames already get a fresh goroutine per UDP packet via
+	// `go PublishData(...)` in service/can.go) instead of dumping into
+	// paho's internal queue.
 	token := client.Publish(topic, qos, retained, payload)
-	go func() {
-		if !token.WaitTimeout(2 * time.Second) {
-			utils.SugarLogger.Warnf("[MQ][%s] Publish to %s timed out", label, topic)
-			return
-		}
-		if token.Error() != nil {
-			utils.SugarLogger.Warnf("[MQ][%s] Publish to %s failed: %v", label, topic, token.Error())
-		}
-	}()
+	if !token.WaitTimeout(10 * time.Second) {
+		utils.SugarLogger.Warnf("[MQ][%s] Publish to %s timed out", label, topic)
+		return
+	}
+	if token.Error() != nil {
+		utils.SugarLogger.Warnf("[MQ][%s] Publish to %s failed: %v", label, topic, token.Error())
+	}
 }
 
 // Subscribe subscribes on the cloud broker only. Messages from the local
