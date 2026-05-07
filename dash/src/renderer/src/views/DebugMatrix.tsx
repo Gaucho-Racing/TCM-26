@@ -10,27 +10,27 @@ import { useSignalStore, type Signal } from '../store/signals';
 type Polarity = 'positive' | 'negative' | 'neutral' | 'latch' | 'metric' | 'state';
 
 const POLARITY: Record<string, Polarity> = {
-  'ecu_led_bms': 'negative',
-  'ecu_led_imd': 'negative',
-  'ecu_led_bspd': 'negative',
-  'ecu_led_bms_latch': 'latch',
-  'ecu_led_imd_latch': 'latch',
-  'ecu_led_bspd_latch': 'latch',
-  'dash_panel_ts_active': 'neutral',
-  'dash_panel_rtd': 'neutral',
-  'dash_panel_ts_off': 'neutral',
-  'dash_panel_rtd_off': 'neutral',
-  'dash_panel_led_bms': 'negative',
-  'dash_panel_led_imd': 'negative',
-  'tcm_connection_ok': 'positive',
-  'tcm_mqtt_ok': 'positive',
-  'tcm_epic_shelter_ok': 'positive',
-  'tcm_camera_ok': 'positive',
-  'tcm_mapache_ping': 'metric',
-  'tcm_cache_size': 'metric',
-  'ecu_ecu_state': 'state',
-  'ecu_power_level': 'metric',
-  'ecu_torque_map': 'metric',
+  ecu_led_bms: 'negative',
+  ecu_led_imd: 'negative',
+  ecu_led_bspd: 'negative',
+  ecu_led_bms_latch: 'latch',
+  ecu_led_imd_latch: 'latch',
+  ecu_led_bspd_latch: 'latch',
+  dash_panel_ts_active: 'neutral',
+  dash_panel_rtd: 'neutral',
+  dash_panel_ts_off: 'neutral',
+  dash_panel_rtd_off: 'neutral',
+  dash_panel_led_bms: 'negative',
+  dash_panel_led_imd: 'negative',
+  tcm_connection_ok: 'positive',
+  tcm_mqtt_ok: 'positive',
+  tcm_epic_shelter_ok: 'positive',
+  tcm_camera_ok: 'positive',
+  tcm_mapache_ping: 'metric',
+  tcm_cache_size: 'metric',
+  ecu_ecu_state: 'state',
+  ecu_power_level: 'metric',
+  ecu_torque_map: 'metric',
 };
 
 // Layout: each entry is a section with a title and a flat list of signals.
@@ -117,7 +117,10 @@ function Header({
         WS · {connected ? 'OK' : 'DOWN'}
       </div>
       <div className="text-sm text-neutral-400">
-        msgs <span className="text-base font-black text-neutral-100 tabular-nums">{messageCount.toLocaleString()}</span>
+        msgs{' '}
+        <span className="text-base font-black text-neutral-100 tabular-nums">
+          {messageCount.toLocaleString()}
+        </span>
       </div>
       <div className="truncate text-sm text-neutral-400">
         last <span className="font-mono text-xs text-cyan-300">{lastSignalName || '—'}</span>
@@ -163,9 +166,7 @@ function FlagTile({ name, signal }: { name: string; signal: Signal | undefined }
       <div className={`text-[10px] font-bold tracking-[0.2em] uppercase ${tone.label}`}>
         {label}
       </div>
-      <div className={`text-4xl leading-none font-black tabular-nums ${tone.value}`}>
-        {display}
-      </div>
+      <div className={`text-4xl leading-none font-black tabular-nums ${tone.value}`}>{display}</div>
     </div>
   );
 }

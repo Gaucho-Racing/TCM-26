@@ -318,7 +318,7 @@ function DebugRow({ label, value, mono }: { label: string; value: string; mono?:
     <div className="flex items-baseline justify-between gap-2 text-xs">
       <span className="tracking-widest text-neutral-500 uppercase">{label}</span>
       <span
-        className={`tabular-nums text-neutral-200 ${mono ? 'truncate font-mono text-[10px]' : ''}`}
+        className={`text-neutral-200 tabular-nums ${mono ? 'truncate font-mono text-[10px]' : ''}`}
       >
         {value}
       </span>
