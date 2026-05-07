@@ -17,12 +17,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-# libjetgpio — userspace GPIO/SPI driver for Jetson. Pinned to a tag so
-# upstream changes don't silently break our build.
-ARG JETGPIO_REF=v1.4
-RUN git clone --depth 1 --branch "${JETGPIO_REF}" \
-    https://github.com/Rubberazer/JETGPIO.git /tmp/jetgpio \
+# libjetgpio — userspace GPIO/SPI driver for Jetson. Pinned to a SHA on
+# `main` so upstream changes don't silently break our build. Upstream
+# only tags releases occasionally (latest tag at time of writing is
+# v1.2); the SHA gives us a precise pin to whatever's current.
+ARG JETGPIO_REF=c69401c4a798aa4ecd058696509dd01011a8976b
+RUN git clone https://github.com/Rubberazer/JETGPIO.git /tmp/jetgpio \
   && cd /tmp/jetgpio \
+  && git checkout "${JETGPIO_REF}" \
   && make \
   && make install
 
