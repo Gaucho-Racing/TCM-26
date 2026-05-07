@@ -12,7 +12,7 @@
 #include "circularBuffer.h"
 
 // Comment out to disable interrupt debug output
-// #define DEBUG
+#define DEBUG
 
 // Comment out to disable UDP debug output
 // #define UDP_DEBUG
@@ -151,11 +151,11 @@ void calling()
     spiXfer(SPI_init, txTemp, (char *)frame.combined.split.data, length + length%2);
 
     // Unswap bytes within each 16-bit halfword (SPI byte-swapped them)
-    for (uint8_t i = 0; i < length + length%2; i += 2) {
-        uint8_t tmp = frame.combined.split.data[i];
-        frame.combined.split.data[i] = frame.combined.split.data[i+1];
-        frame.combined.split.data[i+1] = tmp;
-    }
+    // for (uint8_t i = 0; i < length + length%2; i += 2) {
+    //     uint8_t tmp = frame.combined.split.data[i];
+    //     frame.combined.split.data[i] = frame.combined.split.data[i+1];
+    //     frame.combined.split.data[i+1] = tmp;
+    // }
 
     circularBufferPush(cb, frame.combined.buffer, sizeof(frame.combined.buffer));
 

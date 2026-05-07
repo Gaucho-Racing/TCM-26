@@ -175,6 +175,8 @@ int main(void)
     if(wTransferState == TRANSFER_ERROR){
         GPIOA->BSRR = (uint32_t)GPIO_PIN_4;   // CS high (inactive)
         HAL_SPI_Abort(&hspi1);                 // abort any stuck DMA
+        HAL_SPI_MspDeInit(&hspi1);              // deinit SPI to reset state
+        MX_SPI1_Init();                        // reinit SPI
         wTransferState = TRANSFER_COMPLETE;    // retry on next iteration
     }
     // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
