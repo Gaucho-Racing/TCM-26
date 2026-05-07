@@ -7,12 +7,12 @@
 #include <string.h>
 
 typedef struct {
-    void **buffer;     // Array of void pointers
-    uint8_t capacity;   // Maximum number of elements in the buffer
-    uint8_t head;       // Index of the next element to write
-    uint8_t tail;       // Index of the next element to read
-    uint8_t size;       // Current number of elements in the buffer
-    uint8_t max_arr_size; // Maximum size of the array
+    void **buffer;           // Array of void pointers
+    volatile uint8_t capacity; // Maximum number of elements in the buffer
+    volatile uint8_t head;     // Index of the next element to write
+    volatile uint8_t tail;     // Index of the next element to read
+    volatile uint8_t size;     // Current number of elements in the buffer
+    uint8_t max_arr_size;      // Maximum size of the array
 } CircularBuffer;
 
 CircularBuffer *circular_buffer_init(size_t capacity, size_t max_array_size);

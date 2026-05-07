@@ -76,6 +76,12 @@ struct CAN{
   }combined;
 };
 
+/* DLC to actual byte count lookup (same as HAL internal table) */
+static const uint8_t dlc2bytes[] = {0,1,2,3,4,5,6,7,8,12,16,20,24,32,48,64};
+
+/* Dedicated DMA TX buffer — prevents the circular-buffer slot being
+   overwritten by a new CAN message while DMA is still reading from it. */
+static struct CAN txBuf;
 
 struct CAN buffer[64];
 
@@ -113,7 +119,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-  uint16_t RxData[36];
+  static uint16_t RxData[36];
   FDCAN_TxHeaderTypeDef TxHeader;
   TxHeader.Identifier = 0x3FF;
   TxHeader.IdType = FDCAN_STANDARD_ID;
@@ -166,9 +172,14 @@ int main(void)
       if(tmp2 != NULL){
         uint8_t temp = 0;
         wTransferState = TRANSFER_WAIT;
+        /* length is already actual bytes (converted from DLC in the callback) */
         uint8_t length = tmp2->combined.split.length;
+        if (length > 64) length = 64;  /* safety clamp */
         temp = (length >> 1) + (length % 2) + 3;
-        HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)tmp2, (uint8_t *)RxData, temp);
+        /* Copy to dedicated TX buffer so DMA doesn't read from a slot that
+           could be recycled by a new CAN message before the transfer ends */
+        memcpy(&txBuf, tmp2, sizeof(txBuf));
+        HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&txBuf, (uint8_t *)RxData, temp);
         GPIOA->BRR = (uint32_t)GPIO_PIN_4;
         HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
         time = HAL_GetTick();
@@ -185,6 +196,7 @@ int main(void)
     if(HAL_GetTick() - time > 5000){
       printf("Buffer size: %d\n", cb->size);
       // Soft reset the MCU — clean restart from reset vector
+      printf("yeah\n");
       NVIC_SystemReset();
 
     }
@@ -253,7 +265,9 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
   struct CAN tmp = {};
   HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &RxHeader_FDCAN2, tmp.combined.split.data);
   tmp.combined.split.ID = RxHeader_FDCAN2.Identifier;
-  tmp.combined.split.length = RxHeader_FDCAN2.DataLength;
+  /* Convert DLC code (0-15) to actual byte count — the SPI master uses
+     this value to decide how many bytes to transfer. */
+  tmp.combined.split.length = (RxHeader_FDCAN2.DataLength < 16) ? dlc2bytes[RxHeader_FDCAN2.DataLength] : RxHeader_FDCAN2.DataLength;
   tmp.combined.split.bus = hfdcan->Instance == FDCAN1 ? 1 : 2;
   circularBufferPush(cb, tmp.combined.buffer, sizeof(tmp.combined.buffer));
 }
@@ -304,6 +318,8 @@ void Error_Handler(void)
   __disable_irq();
   while (1)
   {
+    for(uint32_t i = 0; i < 100000; i++);
+    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
   }
   /* USER CODE END Error_Handler_Debug */
 }
