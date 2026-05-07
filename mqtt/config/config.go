@@ -7,7 +7,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
 
-var Version = "1.0.14"
+var Version = "1.0.15"
 var Env = os.Getenv("ENV")
 var Port = os.Getenv("PORT")
 
