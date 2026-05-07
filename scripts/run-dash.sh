@@ -39,8 +39,12 @@ echo "[dash] DISPLAY=$DISPLAY XAUTHORITY=$XAUTHORITY"
 
 cd "$DASH_DIR"
 
-echo "[dash] npm install"
-npm install
+# `npm ci` instead of `npm install` — strict install from the committed
+# package-lock.json. Reproducible, faster (skips dep resolution), and
+# fails loudly if package.json/package-lock.json have drifted instead of
+# silently rewriting the lockfile on the Jetson.
+echo "[dash] npm ci"
+npm ci
 
 if [ ! -f .env ]; then
   echo "[dash] WARN: no .env found. If signals don't show up, the"

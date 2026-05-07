@@ -1,6 +1,5 @@
 import { useSignals } from './hooks/useSignals';
 import { useSignal, useSignalStore, type Signal } from './store/signals';
-import { aggregateCells, CELL_SIGNALS } from './lib/cells';
 
 const SUBSCRIBED_SIGNALS = [
   // ECU state machine
@@ -33,8 +32,6 @@ const SUBSCRIBED_SIGNALS = [
   'tcm_camera_ok',
   'tcm_mapache_ping',
   'tcm_cache_size',
-  // Per-cell voltages and temps — aggregated to max/min.
-  ...CELL_SIGNALS,
 ] as const;
 
 export default function App() {
@@ -60,8 +57,7 @@ function LeftColumn() {
 
 function RightColumn() {
   return (
-    <div className="grid grid-rows-[1.4fr_1fr_1fr] gap-3">
-      <CellExtremesPanel />
+    <div className="grid grid-rows-2 gap-3">
       <ConnectionsPanel />
       <DebugPanel />
     </div>
@@ -134,19 +130,6 @@ function SpeedPanel() {
 
 // ───────────────────────── RIGHT ─────────────────────────
 
-function CellExtremesPanel() {
-  const signals = useSignalStore((s) => s.signals);
-  const { maxVoltage, minVoltage, maxTemp, minTemp } = aggregateCells(signals);
-  return (
-    <Panel title="Cell Extremes (aggregated)">
-      <SignalRow name="maxVoltage" value={maxVoltage.toFixed(2)} />
-      <SignalRow name="minVoltage" value={minVoltage.toFixed(2)} />
-      <SignalRow name="maxTemp" value={maxTemp.toFixed(0)} />
-      <SignalRow name="minTemp" value={minTemp.toFixed(0)} />
-    </Panel>
-  );
-}
-
 function ConnectionsPanel() {
   const wsConnected = useSignalStore((s) => s.connected);
   const cloudConnOk = useSignal('tcm_connection_ok');
@@ -186,8 +169,8 @@ function DebugPanel() {
 
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1 overflow-auto rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
-      <div className="mb-1 text-[10px] font-bold tracking-[0.3em] text-neutral-500 uppercase">
+    <div className="flex flex-col gap-2 overflow-auto rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4">
+      <div className="mb-1 text-sm font-bold tracking-[0.3em] text-neutral-400 uppercase">
         {title}
       </div>
       {children}
@@ -195,6 +178,9 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 
+// 0 / "false" rendered dim, 1 / "true" rendered bright green so booleans
+// stand out at a glance. Numeric values (0x10, 142, 50, etc.) render in
+// the default bright neutral so they read as data, not state.
 function SignalRow({ name, value }: { name: string; value: number | string | Signal | undefined }) {
   let display: string;
   if (value === undefined || value === null) {
@@ -206,10 +192,19 @@ function SignalRow({ name, value }: { name: string; value: number | string | Sig
   } else {
     display = String(value);
   }
+
+  const isOn = display === '1' || display === 'true';
+  const isOff = display === '0' || display === 'false';
+  const valueClass = isOn
+    ? 'text-emerald-400 font-black'
+    : isOff
+      ? 'text-neutral-600'
+      : 'text-cyan-300 font-bold';
+
   return (
-    <div className="flex items-baseline justify-between gap-2 font-mono text-xs">
+    <div className="flex items-baseline justify-between gap-3 font-mono text-xl leading-tight">
       <span className="truncate text-neutral-400">{name}</span>
-      <span className="text-neutral-100 tabular-nums">{display}</span>
+      <span className={`tabular-nums ${valueClass}`}>{display}</span>
     </div>
   );
 }
