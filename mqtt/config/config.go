@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"time"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
 )
@@ -43,4 +44,10 @@ var CloudPublishIntervalInt int
 var LastLocalPublish = cmap.ConcurrentMap[string, uint64]{}
 var LastCloudPublish = cmap.ConcurrentMap[string, uint64]{}
 
-var PingInterval = os.Getenv("PING_INTERVAL")
+// Cloud ping cadence. Raw string from env; parsed into a Duration in
+// utils.VerifyConfig at startup. Other config values that derive from
+// the cadence (e.g. cloudPongFreshness in service.publishTCMStatus)
+// read PingInterval, so changing the env value here automatically
+// rescales those derived thresholds.
+var PingIntervalRaw = os.Getenv("PING_INTERVAL")
+var PingInterval time.Duration

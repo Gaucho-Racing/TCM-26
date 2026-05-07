@@ -8,7 +8,6 @@ import (
 	"mqtt/model"
 	"mqtt/mqtt"
 	"mqtt/utils"
-	"strconv"
 	"time"
 
 	mq "github.com/eclipse/paho.mqtt.golang"
@@ -16,24 +15,21 @@ import (
 
 func InitializePings() {
 	SubscribePong()
-	interval, err := strconv.Atoi(config.PingInterval)
-	if err != nil {
-		utils.SugarLogger.Errorln("Failed to convert ping interval, using 5000ms", err)
-		interval = 5000
-	}
 	go func() {
 		for {
 			PublishPing()
-			time.Sleep(time.Duration(interval) * time.Millisecond)
+			time.Sleep(config.PingInterval)
 		}
 	}()
 	go func() {
+		warnAfter := config.PingInterval * 2
 		for {
 			lastPing := FindLastSuccessfulPing()
-			if time.Now().UnixMilli()-int64(lastPing.Ping) > int64(interval*2) {
-				utils.SugarLogger.Warnf("Last successful ping was %.2fs ago", float64(time.Now().UnixMilli()-int64(lastPing.Ping))/1000)
+			ageMs := time.Now().UnixMilli() - int64(lastPing.Ping)
+			if ageMs > warnAfter.Milliseconds() {
+				utils.SugarLogger.Warnf("Last successful ping was %.2fs ago", float64(ageMs)/1000)
 			}
-			time.Sleep(time.Duration(2345) * time.Millisecond)
+			time.Sleep(2345 * time.Millisecond)
 		}
 	}()
 }

@@ -19,12 +19,14 @@ const (
 	tcmStatusCamera       = 1 << 3 // unused for now
 )
 
-// Treat the cloud connection as healthy if a pong was received within
-// this window. Pings go every 5s (PING_INTERVAL); 10s lets one ping
-// miss before we flip the bit, which is responsive without being
-// flappy on a single dropped packet. (Was 30s — too generous: cloud
-// could be down for half a minute before the dash noticed.)
-const cloudPongFreshness = 10 * time.Second
+// cloudPongFreshness is the freshness window for the most recent pong
+// before we flip tcm_connection_ok off. Derived from the configured
+// PING_INTERVAL: 2× interval allows a single missed ping, +5s slack
+// covers jitter and round-trip variance. So at the default 5s ping
+// cadence this resolves to 15s.
+func cloudPongFreshness() time.Duration {
+	return config.PingInterval*2 + 5*time.Second
+}
 
 // InitializeTCMStatus publishes a TCM Status (0x029) message every 5s
 // summarizing cloud broker connectivity for the dash.
@@ -55,7 +57,7 @@ func publishTCMStatus() {
 	pongAgeOK := false
 	if lastPing.Ping > 0 {
 		pongAge := time.Now().UnixMicro() - int64(lastPing.Ping)
-		pongAgeOK = pongAge >= 0 && pongAge < cloudPongFreshness.Microseconds()
+		pongAgeOK = pongAge >= 0 && pongAge < cloudPongFreshness().Microseconds()
 	}
 
 	var statusBits byte

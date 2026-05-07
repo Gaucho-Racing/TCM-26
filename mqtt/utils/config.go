@@ -3,6 +3,7 @@ package utils
 import (
 	"mqtt/config"
 	"strconv"
+	"time"
 )
 
 func VerifyConfig() {
@@ -20,11 +21,14 @@ func VerifyConfig() {
 
 	config.LocalPublishIntervalInt = parseIntervalMs(config.LocalPublishInterval, 20, "LOCAL_PUBLISH_INTERVAL")
 	config.CloudPublishIntervalInt = parseIntervalMs(config.CloudPublishInterval, 100, "CLOUD_PUBLISH_INTERVAL")
+	pingMs := parseIntervalMs(config.PingIntervalRaw, 5000, "PING_INTERVAL")
+	config.PingInterval = time.Duration(pingMs) * time.Millisecond
 
 	SugarLogger.Infof("Vehicle ID: %s", config.VehicleID)
 	SugarLogger.Infof("Vehicle Upload Key: %d", config.VehicleUploadKey)
 	SugarLogger.Infof("Local Publish Interval: %dms", config.LocalPublishIntervalInt)
 	SugarLogger.Infof("Cloud Publish Interval: %dms", config.CloudPublishIntervalInt)
+	SugarLogger.Infof("Ping Interval: %s", config.PingInterval)
 }
 
 func parseIntervalMs(raw string, fallback int, name string) int {
