@@ -89,33 +89,21 @@ func PublishCloud(topic string, qos byte, retained bool, payload []byte) {
 	publishOne(CloudClient, "cloud", topic, qos, retained, payload)
 }
 
-func publishOne(client mq.Client, label, topic string, qos byte, retained bool, payload []byte) {
-	// Skip while disconnected — fast-path so we don't add to paho's
-	// internal queue during a (re)connect window.
+func publishOne(client mq.Client, _ string, topic string, qos byte, retained bool, payload []byte) {
+	// Skip while disconnected so we don't queue into a paho client
+	// that's mid-(re)connect and silently lose messages.
 	if !client.IsConnected() {
 		return
 	}
-	// Synchronous wait on the token — same shape as TCM-25's working
-	// publish path. The async-goroutine variant we had before removed
-	// the natural backpressure: when cloud is slow, paho's internal
-	// outbound channel fills, then `client.Publish(...)` calls start
-	// blocking at the channel-send level inside paho, which wedges
-	// any goroutine that calls Publish (pings, TCM Status, CAN). Only
-	// `docker restart mqtt` cleared the wedge.
-	//
-	// Blocking the caller here rate-limits publishes naturally: if the
-	// broker is slow, callers queue up waiting in their own goroutines
-	// (CAN frames already get a fresh goroutine per UDP packet via
-	// `go PublishData(...)` in service/can.go) instead of dumping into
-	// paho's internal queue.
-	token := client.Publish(topic, qos, retained, payload)
-	if !token.WaitTimeout(10 * time.Second) {
-		utils.SugarLogger.Warnf("[MQ][%s] Publish to %s timed out", label, topic)
-		return
-	}
-	if token.Error() != nil {
-		utils.SugarLogger.Warnf("[MQ][%s] Publish to %s failed: %v", label, topic, token.Error())
-	}
+	// Fire and forget. We're QoS 0 everywhere — paho hands the bytes
+	// to TCP and the token resolves immediately, so there's nothing
+	// meaningful to wait on. End-to-end health is observable via:
+	//   - OnConnectionLostHandler (paho-internal)  -> "[MQ][...] Connection lost"
+	//   - pong RTT to cloud Mapache               -> "[MQ] Received pong in N ms"
+	//   - TCM Status mqtt_ok bit on the dash      -> CLOUD pill goes red
+	// Per-publish errors at QoS 0 only fire when the connection itself
+	// died, which is already covered by the connection-lost handler.
+	client.Publish(topic, qos, retained, payload)
 }
 
 // Subscribe subscribes on the cloud broker only. Messages from the local
