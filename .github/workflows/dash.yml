@@ -92,14 +92,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # electron-builder bundles an x86-only fpm binary for building .deb
+      # packages, which obviously doesn't run on arm64. Install fpm via
+      # gem so USE_SYSTEM_FPM picks up an arm64-native one. Skip on other
+      # runners — they don't build .deb so they don't need fpm.
+      - name: Install fpm (linux arm64 only)
+        if: matrix.runner == 'ubuntu-24.04-arm'
+        run: sudo gem install --no-document fpm
+
       - name: Build ${{ matrix.label }}
         run: npm run ${{ matrix.script }}
         env:
-          # electron-builder will silently try to publish to GitHub if
-          # GH_TOKEN is set; we publish via softprops below so disable
-          # the built-in publisher.
-          GH_TOKEN: ""
-          ELECTRON_BUILDER_PUBLISH: "never"
+          USE_SYSTEM_FPM: "true"
 
       - name: Attach artifacts to GitHub Release
         uses: softprops/action-gh-release@v2
