@@ -56,6 +56,11 @@ services:
     # container will start, fail gpioInitialise, and exit — restart will
     # spin until it lands on real hardware.
     privileged: true
+    volumes:
+      # libjetgpio runs `modprobe spidev` at init. modprobe (in the image
+      # via kmod) needs the host's kernel modules to actually load
+      # anything; mount /lib/modules read-only so it can find them.
+      - /lib/modules:/lib/modules:ro
     depends_on:
       - mqtt
 

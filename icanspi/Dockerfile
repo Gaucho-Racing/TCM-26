@@ -43,6 +43,16 @@ RUN make
 # ──────────────────────────────────────────────────────────────────
 FROM --platform=linux/arm64 debian:bookworm-slim
 
+# kmod provides modprobe — libjetgpio shells out to it during init to
+# make sure the spidev kernel module is loaded. Without it you get
+# `sh: 1: modprobe: not found` from the lib at startup. Loading the
+# module also requires /lib/modules to be available; mount it from the
+# host in docker-compose with:
+#   volumes: ['/lib/modules:/lib/modules:ro']
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    kmod \
+  && rm -rf /var/lib/apt/lists/*
+
 # Bring over libjetgpio.so so the runtime image doesn't need build-essential.
 COPY --from=builder /usr/lib/libjetgpio.so /usr/lib/
 RUN ldconfig
