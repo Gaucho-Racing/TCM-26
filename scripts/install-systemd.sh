@@ -61,7 +61,7 @@ cat <<EOF
 
 The dash will now:
   - Launch on the graphical session (gr26-dash.service, ${USER_NAME})
-  - Auto-update on a timer: 10s after boot, then every 6h
+  - Auto-update on a timer: 1 min after boot, then every 6h
     (gr26-dash-update.timer + gr26-dash-update.service, root)
 
 A new release is dpkg-installed but doesn't kick the running dash —

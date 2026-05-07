@@ -3,13 +3,11 @@ Description=Periodic gr26-dash auto-update check
 Documentation=https://github.com/Gaucho-Racing/TCM-26
 
 [Timer]
-# Fire 10s after boot — the dash is already up by then (it's on
-# graphical-session.target which beats this timer easily), and there's
-# no harm trying eagerly: if the network isn't ready, the script
-# fails fast (~3s connect timeout) and the timer retries on its
-# regular cadence. After that, every 6 hours so cars left on for a
-# long session still pick up new releases.
-OnBootSec=10s
+# Fire 1 min after boot — gives the network and NTP time to actually
+# come up. Trying at 10s was too eager; the update would always fail
+# the first time on a freshly booted car. After that, every 6h so
+# cars left on for a long session still pick up new releases.
+OnBootSec=1min
 OnUnitActiveSec=6h
 # If the system was off when a fire was scheduled, run it on next boot.
 Persistent=true
