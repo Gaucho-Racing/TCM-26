@@ -66,7 +66,7 @@ enum {
 __IO uint32_t wTransferState = TRANSFER_COMPLETE;
 struct CAN{
   union{
-    uint16_t buffer[36];
+    uint16_t buffer[35];
     struct{
       uint32_t ID;
       uint8_t bus;
@@ -116,6 +116,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  bruh:
   HAL_Init();
 
   /* USER CODE BEGIN Init */
@@ -187,18 +188,14 @@ int main(void)
     }
 
     if(wTransferState == TRANSFER_ERROR){
-        GPIOA->BSRR = (uint32_t)GPIO_PIN_4;   // CS high (inactive)
-        HAL_SPI_Abort(&hspi1);                 // abort any stuck DMA
-        HAL_SPI_MspDeInit(&hspi1);              // deinit SPI to reset state
-        MX_SPI1_Init();                        // reinit SPI
         wTransferState = TRANSFER_COMPLETE;    // retry on next iteration
+        GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
+
     }
     if(HAL_GetTick() - time > 5000){
-      printf("Buffer size: %d\n", cb->size);
-      // Soft reset the MCU — clean restart from reset vector
-      printf("yeah\n");
-      NVIC_SystemReset();
-
+      time = HAL_GetTick();
+      wTransferState = TRANSFER_COMPLETE;    // retry on next iteration
+      GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
     }
 
     // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);

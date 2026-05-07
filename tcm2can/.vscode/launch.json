@@ -21,7 +21,7 @@
     "configurations": [
         {
             "cwd": "${workspaceFolder}",
-            "executable": "./build/RelWithDebInfo/bruh2.elf",
+            "executable": "./build/Debug/bruh2.elf",
             "name": "Debug with OpenOCD",
             "request": "launch",
             "type": "cortex-debug",

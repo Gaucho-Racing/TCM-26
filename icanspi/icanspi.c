@@ -12,7 +12,7 @@
 #include "circularBuffer.h"
 
 // Comment out to disable interrupt debug output
-// #define DEBUG
+#define DEBUG
 
 // Comment out to disable UDP debug output
 // #define UDP_DEBUG
@@ -46,7 +46,7 @@ CircularBuffer *cb = NULL;
 
 struct CAN{
     union{
-      uint16_t buffer[36];
+      uint16_t buffer[35];
       struct{
         uint32_t ID;
         uint8_t bus;
@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
             UDP_PRINT("\n");
         } else if(counter >= 2000){
             if (gpioRead(18) == 0){
-                calling();
+                // calling();
                 DBG_PRINT("%05u  POLL  calling\n", seq);
             }
             counter = 0;
