@@ -1,9 +1,16 @@
-import { app, BrowserWindow, globalShortcut } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { loadConfig, saveConfig, type DashConfig } from './config.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isDev = !app.isPackaged;
+
+// Register IPC handlers for the renderer to read/write the runtime config
+// file. Wiring this up before the window opens guarantees the renderer's
+// initial dashConfig.get() call always finds a handler.
+ipcMain.handle('dash-config:get', async () => loadConfig());
+ipcMain.handle('dash-config:set', async (_event, next: DashConfig) => saveConfig(next));
 
 // The driver display is 1600x600. In production we run kiosk + fullscreen
 // (no chrome, no escape) so a stray hand on the wheel can't kill the dash.

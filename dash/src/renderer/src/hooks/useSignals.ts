@@ -1,8 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useSignalStore } from '../store/signals';
-
-const WS_URL = import.meta.env.VITE_GR26_WS_URL ?? 'ws://localhost:8001/gr26/live';
-const VEHICLE_ID = import.meta.env.VITE_GR26_VEHICLE_ID ?? 'GR26';
+import { useConfigStore } from '../store/config';
 
 interface IncomingSignal {
   name: string;
@@ -16,21 +14,34 @@ interface IncomingSignal {
 // signal into the Zustand store. Auto-reconnects on disconnect with simple
 // linear backoff. Drop the hook into App once and let components read
 // signals from the store via `useSignal`.
+//
+// WS URL + vehicle id come from useConfigStore so they can be edited
+// from the in-app Settings modal (or by hand in userData/config.json)
+// without rebuilding the dash. The effect's deps include both, so a
+// config change cleanly tears the old WS down and re-subscribes.
 export function useSignals(signalNames: readonly string[]): void {
   const setSignal = useSignalStore((s) => s.setSignal);
   const setConnected = useSignalStore((s) => s.setConnected);
+  const wsUrl = useConfigStore((s) => s.wsUrl);
+  const vehicleId = useConfigStore((s) => s.vehicleId);
+  const configLoaded = useConfigStore((s) => s.loaded);
 
   // join inside the effect deps so a re-arranged signal list re-subscribes.
   const namesKey = signalNames.join(',');
   const wsRef = useRef<WebSocket | null>(null);
 
   useEffect(() => {
+    // Don't open a WS until the config is loaded — otherwise we'd connect
+    // with whatever defaults are baked in, then immediately reconnect when
+    // the real config arrives.
+    if (!configLoaded) return;
+
     let cancelled = false;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
       if (cancelled) return;
-      const url = `${WS_URL}?vehicle_id=${VEHICLE_ID}&signals=${namesKey}`;
+      const url = `${wsUrl}?vehicle_id=${vehicleId}&signals=${namesKey}`;
       const ws = new WebSocket(url);
       wsRef.current = ws;
 
@@ -81,5 +92,5 @@ export function useSignals(signalNames: readonly string[]): void {
         /* ignore */
       }
     };
-  }, [namesKey, setSignal, setConnected]);
+  }, [namesKey, wsUrl, vehicleId, configLoaded, setSignal, setConnected]);
 }
