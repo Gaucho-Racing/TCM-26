@@ -69,8 +69,6 @@ services:
       # via kmod) needs the host's kernel modules to actually load
       # anything; mount /lib/modules read-only so it can find them.
       - /lib/modules:/lib/modules:ro
-    depends_on:
-      - mqtt
 
   gr26:
     image: ghcr.io/gaucho-racing/mapache/gr26:latest
