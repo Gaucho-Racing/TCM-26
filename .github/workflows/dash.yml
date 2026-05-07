@@ -41,40 +41,16 @@ jobs:
       - name: Build
         run: npm run build
 
-  # Builds the dash for linux/arm64 (Jetson), macOS (universal), and
-  # Windows (x64) on a v* tag push, then attaches every artifact to the
-  # GitHub Release. Each matrix leg runs natively for its target platform
-  # so we don't fight cross-build toolchains. softprops/action-gh-release
-  # creates the release if missing and appends files across all jobs.
+  # Builds the dash for linux/arm64 (Jetson) on a v* tag push and attaches
+  # the .deb + AppImage to the GitHub Release. Mac/Windows builds aren't
+  # produced — for desktop iteration just run `npm run dev`.
   release:
     needs: check
     if: startsWith(github.ref, 'refs/tags/v')
-    name: Release
-    runs-on: ${{ matrix.runner }}
+    name: Release linux/arm64
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: write
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: linux/arm64
-            runner: ubuntu-24.04-arm
-            script: build:linux
-            artifacts: |
-              dash/dist/*.deb
-              dash/dist/*.AppImage
-          - label: mac/universal
-            runner: macos-latest
-            script: build:mac
-            artifacts: |
-              dash/dist/*.dmg
-              dash/dist/*-mac.zip
-          - label: win/x64
-            runner: windows-latest
-            script: build:win
-            artifacts: |
-              dash/dist/*.exe
-              dash/dist/*-win.zip
     defaults:
       run:
         working-directory: dash
@@ -92,22 +68,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # electron-builder bundles an x86-only fpm binary for building .deb
-      # packages, which obviously doesn't run on arm64. Install fpm via
-      # gem so USE_SYSTEM_FPM picks up an arm64-native one. Skip on other
-      # runners — they don't build .deb so they don't need fpm.
-      - name: Install fpm (linux arm64 only)
-        if: matrix.runner == 'ubuntu-24.04-arm'
+      # electron-builder bundles an x86-only fpm for building .deb packages,
+      # which obviously doesn't run on arm64. Install fpm via gem so
+      # USE_SYSTEM_FPM picks up an arm64-native one.
+      - name: Install fpm
         run: sudo gem install --no-document fpm
 
-      - name: Build ${{ matrix.label }}
-        run: npm run ${{ matrix.script }}
+      - name: Build linux/arm64
+        run: npm run build:linux
         env:
           USE_SYSTEM_FPM: "true"
 
       - name: Attach artifacts to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ matrix.artifacts }}
+          files: |
+            dash/dist/*.deb
+            dash/dist/*.AppImage
           fail_on_unmatched_files: true
           generate_release_notes: true

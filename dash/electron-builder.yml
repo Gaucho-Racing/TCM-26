@@ -13,6 +13,8 @@ files:
 
 asar: true
 
+# Linux-only by design — the Jetson is the only supported deployment
+# target. For dev iteration on Mac/Windows, run `npm run dev` instead.
 linux:
   target:
     - target: deb
@@ -37,36 +39,3 @@ linux:
 deb:
   packageCategory: utils
   priority: optional
-
-mac:
-  category: public.app-category.utilities
-  # Universal binary covers both Apple Silicon and Intel Macs in one
-  # artifact — simpler distribution for the (small, mixed) team.
-  target:
-    - target: dmg
-      arch: universal
-    - target: zip
-      arch: universal
-  # No code signing — internal team distribution. Users will get the
-  # standard "unidentified developer" warning the first time, then it's
-  # fine. Sign + notarize later if we ever ship outside the team.
-  identity: null
-  hardenedRuntime: false
-  gatekeeperAssess: false
-
-win:
-  target:
-    - target: nsis
-      arch: x64
-    - target: zip
-      arch: x64
-  publisherName: Gaucho Racing
-
-nsis:
-  oneClick: false
-  perMachine: false
-  allowToChangeInstallationDirectory: true
-  shortcutName: GR26 Dash
-  createDesktopShortcut: true
-  createStartMenuShortcut: true
-  menuCategory: Gaucho Racing

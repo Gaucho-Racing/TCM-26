@@ -9,9 +9,8 @@ set -euo pipefail
 # A release in tcm-26 means a single tag (vX.Y.Z) that:
 #   - tags the mqtt and icanspi Docker images (their workflows pick up the
 #     release and add a <version> tag alongside `latest`)
-#   - kicks the dash release matrix (dash.yml builds linux/arm64, mac
-#     universal, windows x64 installers and attaches them to the
-#     GitHub Release)
+#   - kicks the dash release job (dash.yml builds the linux/arm64 .deb
+#     and AppImage and attaches them to the GitHub Release)
 #
 # Bumps the version baked into:
 #   - mqtt/config/config.go  (Version constant; surfaces in the relay banner)
@@ -114,11 +113,7 @@ done
 echo ""
 echo "  Dash artifacts that will be attached to the GitHub Release:"
 echo "    gr26-dash_${SEMVER}_arm64.deb"
-echo "    gr26-dash_${SEMVER}_arm64.AppImage"
-echo "    gr26-dash-${SEMVER}-universal.dmg"
-echo "    gr26-dash-${SEMVER}-universal-mac.zip"
-echo "    GR26 Dash Setup ${SEMVER}.exe"
-echo "    gr26-dash-${SEMVER}-win.zip"
+echo "    GR26 Dash-${SEMVER}-arm64.AppImage"
 echo ""
 read -rp "Proceed? (y/N) " CONFIRM
 if [[ "$CONFIRM" != "y" && "$CONFIRM" != "Y" ]]; then

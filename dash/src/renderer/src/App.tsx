@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
 import { useSignals } from './hooks/useSignals';
 import { useSignal, useSignalStore } from './store/signals';
-import { useConfigStore } from './store/config';
 import { aggregateCells, CELL_SIGNALS } from './lib/cells';
 import {
   socColor,
@@ -11,7 +9,6 @@ import {
   stateClassNames,
   ECU_STATE,
 } from './lib/state';
-import { Settings, SettingsTrigger } from './views/Settings';
 
 const SUBSCRIBED_SIGNALS = [
   // ECU state machine — drives Vehicle State + derived TS/RTD indicators.
@@ -50,24 +47,12 @@ const SUBSCRIBED_SIGNALS = [
 ] as const;
 
 export default function App() {
-  const loadConfig = useConfigStore((s) => s.load);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-
-  // Load runtime config (vehicleId, wsUrl) before useSignals tries to
-  // connect. The hook itself waits on `loaded` so we don't race.
-  useEffect(() => {
-    void loadConfig();
-  }, [loadConfig]);
-
   useSignals(SUBSCRIBED_SIGNALS);
-
   return (
-    <div className="relative grid h-screen w-screen grid-cols-[1fr_1.6fr_1fr] gap-3 bg-neutral-950 p-4">
+    <div className="grid h-screen w-screen grid-cols-[1fr_1.6fr_1fr] gap-3 bg-neutral-950 p-4">
       <LeftColumn />
       <SpeedPanel />
       <RightColumn />
-      <SettingsTrigger onClick={() => setSettingsOpen(true)} />
-      {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}
     </div>
   );
 }
