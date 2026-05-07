@@ -59,4 +59,10 @@ RUN ldconfig
 
 COPY --from=builder /app/icanspi /usr/local/bin/icanspi
 
-ENTRYPOINT ["/usr/local/bin/icanspi"]
+# stdbuf -oL forces line-buffered stdout so init prints reach
+# `docker compose logs` immediately. Without it C's stdout is fully
+# buffered when not on a TTY (which `docker compose up -d` doesn't
+# allocate), and you'd see nothing until the 4KB buffer fills — which
+# never happens for icanspi's small init output. coreutils provides
+# stdbuf and is already in the base image.
+ENTRYPOINT ["stdbuf", "-oL", "/usr/local/bin/icanspi"]
