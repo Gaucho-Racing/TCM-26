@@ -35,18 +35,7 @@ func InitializeTCMStatus() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 		for range ticker.C {
-			// Wrap each iteration in recover() so a single bad publish
-			// (DB hiccup, paho panic, etc.) can't kill the loop forever
-			// — losing one TCM Status tick is fine, losing the loop
-			// silently means the dash CLOUD pill never updates again.
-			func() {
-				defer func() {
-					if r := recover(); r != nil {
-						utils.SugarLogger.Errorf("[TCM] publishTCMStatus panicked: %v", r)
-					}
-				}()
-				publishTCMStatus()
-			}()
+			publishTCMStatus()
 		}
 	}()
 }
