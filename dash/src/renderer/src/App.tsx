@@ -95,7 +95,7 @@ function VehicleStatePanel() {
       className={`flex min-h-0 flex-col items-center justify-center gap-3 rounded-2xl border p-3 transition-colors ${c.bg} ${c.border} ${c.pulse}`}
     >
       <SectionTitle>Vehicle State</SectionTitle>
-      <div className={`text-3xl font-black tracking-tight ${c.text}`}>{stateLabel(ecuState)}</div>
+      <div className={`text-5xl font-black tracking-tight ${c.text}`}>{stateLabel(ecuState)}</div>
       <div className="flex gap-3">
         <Indicator label="TS" active={tsActive} />
         <Indicator label="RTD" active={rtd} />
@@ -107,7 +107,7 @@ function VehicleStatePanel() {
 function Indicator({ label, active }: { label: string; active: boolean }) {
   return (
     <div
-      className={`rounded-lg border px-4 py-1 text-base font-black tracking-widest transition-colors ${
+      className={`rounded-lg border px-5 py-2 text-2xl font-black tracking-widest transition-colors ${
         active
           ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-300 shadow-[0_0_18px_-6px_rgb(52_211_153/0.7)]'
           : 'border-neutral-700 bg-neutral-900/60 text-neutral-600'
@@ -118,12 +118,18 @@ function Indicator({ label, active }: { label: string; active: boolean }) {
   );
 }
 
-type SafetyStatus = 'ok' | 'latched' | 'warn';
+// Safety latch tri-state. The ECU exposes two bits per system: an
+// active-fault bit (`ecu_led_X`) and a sticky latch bit
+// (`ecu_led_X_latch`) that stays set until the driver manually resets
+// it. Active fault wins regardless of latch state. With no active
+// fault, a set latch means "fault was here, manual reset required" —
+// shown yellow as 'unlatched'. Clean + clean → green 'latched' (armed).
+type SafetyStatus = 'latched' | 'unlatched' | 'warn';
 
 function safetyStatus(warn: boolean, latched: boolean): SafetyStatus {
   if (warn) return 'warn';
-  if (latched) return 'latched';
-  return 'ok';
+  if (latched) return 'unlatched';
+  return 'latched';
 }
 
 function SafetyPanel() {
@@ -138,39 +144,35 @@ function SafetyPanel() {
     <div className="flex min-h-0 flex-col gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
       <SectionTitle>Safety</SectionTitle>
       <div className="grid flex-1 grid-cols-3 gap-2">
-        <SafetyTile label="BMS" status={safetyStatus(bms, bmsLatch)} latched={bmsLatch} />
-        <SafetyTile label="IMD" status={safetyStatus(imd, imdLatch)} latched={imdLatch} />
-        <SafetyTile label="BSPD" status={safetyStatus(bspd, bspdLatch)} latched={bspdLatch} />
+        <SafetyTile label="BMS" status={safetyStatus(bms, bmsLatch)} />
+        <SafetyTile label="IMD" status={safetyStatus(imd, imdLatch)} />
+        <SafetyTile label="BSPD" status={safetyStatus(bspd, bspdLatch)} />
       </div>
     </div>
   );
 }
 
-function SafetyTile({
-  label,
-  status,
-  latched,
-}: {
-  label: string;
-  status: SafetyStatus;
-  latched: boolean;
-}) {
-  const styles =
-    status === 'warn'
-      ? 'animate-pulse border-red-500/60 bg-red-500/20 text-red-300 shadow-[0_0_24px_-4px_rgb(239_68_68/0.7)]'
-      : status === 'latched'
-        ? 'border-amber-400/60 bg-amber-500/15 text-amber-300 shadow-[0_0_22px_-6px_rgb(251_191_36/0.6)]'
-        : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400';
+const SAFETY_TILE_STYLES: Record<SafetyStatus, string> = {
+  warn: 'animate-pulse border-red-500/60 bg-red-500/20 text-red-300 shadow-[0_0_24px_-4px_rgb(239_68_68/0.7)]',
+  unlatched:
+    'border-amber-400/60 bg-amber-500/15 text-amber-300 shadow-[0_0_22px_-6px_rgb(251_191_36/0.6)]',
+  latched: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400',
+};
 
+const SAFETY_TILE_SUBLABEL: Record<SafetyStatus, string> = {
+  warn: '● FAULT',
+  unlatched: '● UNLATCHED',
+  latched: '○ LATCHED',
+};
+
+function SafetyTile({ label, status }: { label: string; status: SafetyStatus }) {
   return (
-    <div className={`flex flex-col items-center justify-center rounded-xl border ${styles}`}>
-      <div className="text-xl font-black tracking-widest">{label}</div>
-      <div
-        className={`mt-1 text-[9px] font-bold tracking-[0.2em] uppercase ${
-          latched ? 'text-amber-300' : 'text-neutral-600'
-        }`}
-      >
-        {latched ? '● LATCHED' : '○ no latch'}
+    <div
+      className={`flex flex-col items-center justify-center rounded-xl border ${SAFETY_TILE_STYLES[status]}`}
+    >
+      <div className="text-3xl font-black tracking-widest">{label}</div>
+      <div className="mt-1 text-sm font-bold tracking-[0.2em] uppercase">
+        {SAFETY_TILE_SUBLABEL[status]}
       </div>
     </div>
   );
@@ -183,9 +185,9 @@ function BatteryPanel() {
     <div className="flex min-h-0 flex-col justify-center gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 px-5 py-3">
       <div className="flex items-baseline justify-between">
         <SectionTitle>Battery</SectionTitle>
-        <div className="text-4xl font-black text-neutral-100 tabular-nums">
+        <div className="text-6xl font-black text-neutral-100 tabular-nums">
           {clamped.toFixed(0)}
-          <span className="ml-1 text-base text-neutral-500">%</span>
+          <span className="ml-1 text-xl text-neutral-500">%</span>
         </div>
       </div>
       <div className="h-4 overflow-hidden rounded-full bg-neutral-800">
@@ -254,12 +256,12 @@ const STATUS_TEXT: Record<ConnStatus, string> = {
 // Replaces the old tile-style pills so the panel can shrink.
 function ConnRow({ label, status, value }: { label: string; status: ConnStatus; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-2 text-base">
+    <div className="flex items-center justify-between gap-2 text-xl">
       <div className="flex items-center gap-2">
-        <span className={`h-2.5 w-2.5 rounded-full ${STATUS_DOT[status]}`} />
+        <span className={`h-3.5 w-3.5 rounded-full ${STATUS_DOT[status]}`} />
         <span className="font-bold tracking-widest text-neutral-300">{label}</span>
       </div>
-      <span className={`font-mono text-sm font-bold tabular-nums ${STATUS_TEXT[status]}`}>
+      <span className={`font-mono text-lg font-bold tabular-nums ${STATUS_TEXT[status]}`}>
         {value}
       </span>
     </div>
@@ -365,10 +367,10 @@ function DebugPanel() {
 
 function DebugRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-2 text-base">
-      <span className="text-sm tracking-widest text-neutral-500 uppercase">{label}</span>
+    <div className="flex items-baseline justify-between gap-2 text-lg">
+      <span className="text-base tracking-widest text-neutral-500 uppercase">{label}</span>
       <span
-        className={`text-neutral-100 tabular-nums ${mono ? 'truncate font-mono text-xs' : 'font-bold'}`}
+        className={`text-neutral-100 tabular-nums ${mono ? 'truncate font-mono text-sm' : 'font-bold'}`}
       >
         {value}
       </span>
@@ -380,7 +382,9 @@ function DebugRow({ label, value, mono }: { label: string; value: string; mono?:
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-xs font-bold tracking-[0.3em] text-neutral-500 uppercase">{children}</div>
+    <div className="text-base font-bold tracking-[0.3em] text-neutral-500 uppercase">
+      {children}
+    </div>
   );
 }
 
