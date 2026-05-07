@@ -6,11 +6,14 @@ name: tcm26
 # that also wants 1883/5432/8000/8001 will collide; that's intentional, the
 # Jetson is a dedicated host.
 #
-# This file is the dev-friendly compose: no restart policy, so when a
-# container crashes it stays down and you can read the failure mode in
-# `docker compose logs`. The on-vehicle Jetson install layers an overlay
-# from the jetson-infra repo on top of this file, which adds
-# `restart: always` to every service.
+# This file is the dev compose only: builds from local source, runs
+# tcm-mqtt under air for hot reload, no restart policy so crashes are
+# visible in `docker compose logs`. Use it on a laptop or a dev Jetson
+# while iterating.
+#
+# The on-vehicle production stack is a SEPARATE compose in the
+# `jetson-infra` repo — it pulls pinned GHCR images, drops the air
+# tooling, sets `restart: always`. It's not an overlay on this file.
 
 services:
   mqtt:
@@ -58,8 +61,8 @@ services:
     # libjetgpio mmaps /dev/mem and pokes the Jetson's GPIO/SPI registers
     # directly, so it needs full hardware access. On non-Jetson hosts the
     # container starts, fails gpioInitialise, and exits — and stays
-    # exited under this dev compose. The jetson-infra overlay adds
-    # `restart: always` so it'll keep retrying on the Jetson itself.
+    # exited under this dev compose. The prod stack in jetson-infra
+    # sets `restart: always` so it'll keep retrying on the Jetson itself.
     privileged: true
     volumes:
       # libjetgpio runs `modprobe spidev` at init. modprobe (in the image
