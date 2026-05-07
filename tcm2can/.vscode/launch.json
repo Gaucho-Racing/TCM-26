@@ -18,34 +18,49 @@
 
 {
     "version": "0.2.0",
-    "configurations": [{
-        "cwd": "${workspaceFolder}",
-        "executable": "./build/Debug/bruh2.elf",
-        "name": "Debug with OpenOCD",
-        "request": "launch",
-        "type": "cortex-debug",
-        "servertype": "openocd",
-        "configFiles": ["interface/stlink.cfg", "target/stm32g4x.cfg"],
-        "searchDir": [],
-        "preLaunchTask": "CMake: build",
-        "showDevDebugOutput": "none",
-        "svdPath": "${workspaceFolder}/.vscode/STM32G474.svd",
-        "swoConfig": {
-            "enabled": true,
-            "cpuFrequency": 160000000,
-            "swoFrequency":  2000000,
-            "source": "probe",
-            "decoders": [
-                { 
-                    "type": "console",
-                    "label": "ITM",
-                    "showOnStartup": true,
-                    "port": 0,
-                    "encoding": "ascii"
-                }
-            ]
+    "configurations": [
+        {
+            "cwd": "${workspaceFolder}",
+            "executable": "./build/Debug/bruh2.elf",
+            "name": "Debug with OpenOCD",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "configFiles": ["interface/stlink.cfg", "target/stm32g4x.cfg"],
+            "searchDir": [],
+            "preLaunchTask": "CMake: build",
+            "showDevDebugOutput": "none",
+            "svdPath": "${workspaceFolder}/.vscode/STM32G474.svd",
+            "swoConfig": {
+                "enabled": true,
+                "cpuFrequency": 160000000,
+                "swoFrequency": 2000000,
+                "source": "probe",
+                "decoders": [
+                    {
+                        "type": "console",
+                        "label": "ITM",
+                        "showOnStartup": true,
+                        "port": 0,
+                        "encoding": "ascii"
+                    }
+                ]
+            }
         },
-        
-    }],
+        {
+            "cwd": "${workspaceFolder}",
+            "executable": "./build/Debug/bruh2.elf",
+            "name": "Flash Firmware",
+            "request": "launch",
+            "type": "cortex-debug",
+            "servertype": "openocd",
+            "configFiles": ["interface/stlink.cfg", "target/stm32g4x.cfg"],
+            "searchDir": [],
+            "preLaunchTask": "CMake: build",
+            "showDevDebugOutput": "none",
+            "svdPath": "${workspaceFolder}/.vscode/STM32G474.svd",
+            "runToEntryPoint": "main"
+        }
+    ],
     "compounds": []
 }

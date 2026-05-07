@@ -171,6 +171,12 @@ int main(void)
         HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
       }
     }
+
+    if(wTransferState == TRANSFER_ERROR){
+        GPIOA->BSRR = (uint32_t)GPIO_PIN_4;   // CS high (inactive)
+        HAL_SPI_Abort(&hspi1);                 // abort any stuck DMA
+        wTransferState = TRANSFER_COMPLETE;    // retry on next iteration
+    }
     // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
     // HAL_Delay(100);
     /* USER CODE END WHILE */
