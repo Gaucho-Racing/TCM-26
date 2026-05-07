@@ -1,0 +1,15 @@
+[Unit]
+Description=GR26 Driver Dashboard
+Documentation=https://github.com/Gaucho-Racing/TCM-26
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+# Path has a space (productName "GR26 Dash") so escape it with \x20.
+# Backslash-escape works in systemd unit files but \x20 is more obvious.
+ExecStart=/opt/GR26\x20Dash/gr26-dash
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=GR26 Dash auto-update on boot
+Documentation=https://github.com/Gaucho-Racing/TCM-26
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/gr26-dash-update
+# Bound the whole thing so a flaky network can't hold up boot indefinitely.
+# The script's own per-curl timeouts add up to roughly this.
+TimeoutStartSec=180
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
