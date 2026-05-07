@@ -28,6 +28,11 @@ sudo install -m 0644 \
     "${REPO_ROOT}/systemd/gr26-dash-update.service" \
     /etc/systemd/system/gr26-dash-update.service
 
+echo "[install] installing /etc/systemd/system/gr26-dash-update.timer"
+sudo install -m 0644 \
+    "${REPO_ROOT}/systemd/gr26-dash-update.timer" \
+    /etc/systemd/system/gr26-dash-update.timer
+
 echo "[install] installing ${SYSTEMD_USER_DIR}/gr26-dash.service"
 mkdir -p "${SYSTEMD_USER_DIR}"
 install -m 0644 \
@@ -39,7 +44,10 @@ sudo systemctl daemon-reload
 systemctl --user daemon-reload
 
 echo "[install] enabling units"
-sudo systemctl enable gr26-dash-update.service
+# Timer (not the .service) is what gets enabled — the timer triggers
+# the service on its schedule. Enabling the .service directly would
+# tie it to a target's startup, which is exactly what we don't want.
+sudo systemctl enable gr26-dash-update.timer
 systemctl --user enable gr26-dash.service
 
 # Linger keeps user services running without an interactive login —
@@ -52,16 +60,24 @@ cat <<EOF
 [install] done.
 
 The dash will now:
-  - Run an auto-update check at boot (gr26-dash-update.service, root)
   - Launch on the graphical session (gr26-dash.service, ${USER_NAME})
+  - Auto-update on a timer: 5 min after boot, then every 6h
+    (gr26-dash-update.timer + gr26-dash-update.service, root)
+
+A new release is dpkg-installed but doesn't kick the running dash —
+the new version takes effect on the next boot or the next time the
+dash service is restarted. No mid-session blip.
 
 Reboot to exercise the full flow, or kick things off without rebooting:
-  sudo systemctl start gr26-dash-update.service     # check for updates now
   systemctl --user start gr26-dash.service          # launch the dash now
+  sudo systemctl start gr26-dash-update.service     # force an update check now
 
 Tail logs:
   sudo journalctl -u gr26-dash-update -f
   journalctl --user -u gr26-dash -f
+
+When the next update fires:
+  systemctl list-timers gr26-dash-update.timer
 
 Pin to current version (disable auto-update temporarily):
   sudo mkdir -p /etc/gr26-dash

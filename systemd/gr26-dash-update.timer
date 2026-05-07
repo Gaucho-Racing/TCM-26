@@ -1,0 +1,18 @@
+[Unit]
+Description=Periodic gr26-dash auto-update check
+Documentation=https://github.com/Gaucho-Racing/TCM-26
+
+[Timer]
+# Fire 5 min after boot — by then the dash is up, the driver isn't
+# waiting on us, and the network has had a chance to settle. After
+# that, every 6 hours so cars left on for a long session still pick up
+# new releases. RandomizedDelaySec spreads load if multiple cars boot
+# together.
+OnBootSec=5min
+OnUnitActiveSec=6h
+RandomizedDelaySec=2min
+# If the system was off when a fire was scheduled, run it on next boot.
+Persistent=true
+
+[Install]
+WantedBy=timers.target
