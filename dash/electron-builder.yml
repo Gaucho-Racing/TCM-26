@@ -25,7 +25,7 @@ linux:
         - x64
   category: Utility
   vendor: Gaucho Racing
-  maintainer: Gaucho Racing <ucsbgauchoracing@gmail.com>
+  maintainer: Gaucho Racing <team@gauchoracing.com>
   synopsis: GR26 driver dashboard
   description: On-vehicle Electron driver display for the GR26 race car.
   desktop:
