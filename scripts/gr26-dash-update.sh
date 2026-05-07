@@ -20,7 +20,11 @@ REPO="Gaucho-Racing/TCM-26"
 PACKAGE="gr26-dash"
 DISABLED_FLAG="/etc/gr26-dash/updates-disabled"
 LOG_PREFIX="[gr26-dash-update]"
-API_TIMEOUT=20
+# --connect-timeout fails fast when the car is offline — DNS/TCP can't
+# resolve, curl bails in seconds rather than burning the full max-time.
+# --max-time is the upper bound for the whole transfer once connected.
+CONNECT_TIMEOUT=3
+API_TIMEOUT=15
 DOWNLOAD_TIMEOUT=120
 
 log() { echo "${LOG_PREFIX} $*"; }
@@ -37,7 +41,7 @@ fi
 
 CURRENT=$(dpkg-query -W -f='${Version}' "${PACKAGE}" 2>/dev/null || echo "")
 
-RESP=$(curl --max-time "${API_TIMEOUT}" -fsSL \
+RESP=$(curl --connect-timeout "${CONNECT_TIMEOUT}" --max-time "${API_TIMEOUT}" -fsSL \
     -H "Accept: application/vnd.github+json" \
     "https://api.github.com/repos/${REPO}/releases/latest" 2>/dev/null) || {
     log "could not reach GitHub, skipping"
@@ -71,7 +75,8 @@ TMP=$(mktemp /tmp/gr26-dash.XXXXXX.deb)
 trap 'rm -f "${TMP}"' EXIT
 
 log "downloading ${DEB_URL}"
-if ! curl --max-time "${DOWNLOAD_TIMEOUT}" -fsSL -o "${TMP}" "${DEB_URL}"; then
+if ! curl --connect-timeout "${CONNECT_TIMEOUT}" --max-time "${DOWNLOAD_TIMEOUT}" -fsSL \
+    -o "${TMP}" "${DEB_URL}"; then
     log "download failed, keeping current version"
     exit 0
 fi
