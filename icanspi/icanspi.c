@@ -15,7 +15,7 @@
 #define DEBUG
 
 // Comment out to disable UDP debug output
-// #define UDP_DEBUG
+#define UDP_DEBUG
 
 #ifdef DEBUG
 #define DBG_PRINT(fmt, ...) printf("[DEBUG] " fmt, ##__VA_ARGS__)
