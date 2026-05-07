@@ -148,6 +148,8 @@ int main(void)
   HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
   HAL_FDCAN_Start(&hfdcan1);
   HAL_FDCAN_Start(&hfdcan2);
+  uint32_t time = HAL_GetTick();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -169,6 +171,7 @@ int main(void)
         HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)tmp2, (uint8_t *)RxData, temp);
         GPIOA->BRR = (uint32_t)GPIO_PIN_4;
         HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
+        time = HAL_GetTick();
       }
     }
 
@@ -179,6 +182,13 @@ int main(void)
         MX_SPI1_Init();                        // reinit SPI
         wTransferState = TRANSFER_COMPLETE;    // retry on next iteration
     }
+    if(HAL_GetTick() - time > 5000){
+      printf("Buffer size: %d\n", cb->size);
+      // Soft reset the MCU — clean restart from reset vector
+      NVIC_SystemReset();
+
+    }
+
     // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
     // HAL_Delay(100);
     /* USER CODE END WHILE */
@@ -250,7 +260,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+  // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
   GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
   wTransferState = TRANSFER_COMPLETE;
 }
