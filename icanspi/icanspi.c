@@ -123,6 +123,18 @@ int setCB(int pin, int edge, int delay, long unsigned int *timestamp, void *call
 
 static uint32_t seq = 0;
 
+
+// yeah actual reset function
+void reset()
+{
+    uint8_t buf[1] = {0};
+    while(gpioRead(18)==0){
+        spiXfer(SPI_init, buf, buf, 1);
+        printf("BRUH\n");
+    }
+}
+
+
 void calling()
 {
     long long isr_start = DBG_EPOCH_US();
@@ -234,8 +246,9 @@ int main(int argc, char *argv[])
             UDP_PRINT("\n");
         } else if(counter >= 2000){
             if (gpioRead(18) == 0){
-                calling();
-                DBG_PRINT("%05u  POLL  calling\n", seq);
+                // calling();
+                // DBG_PRINT("%05u  POLL  calling\n", seq);
+                reset();
             }
             counter = 0;
         } else {
