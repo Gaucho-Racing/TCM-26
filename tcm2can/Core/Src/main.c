@@ -187,23 +187,14 @@ int main(void)
         time = HAL_GetTick();
       }
     }
-
-    // if(wTransferState == TRANSFER_ERROR){
-    //     wTransferState = TRANSFER_COMPLETE;
-    //     hspi1.State = HAL_SPI_STATE_READY;
-    //     GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
-    //     /* Hold CS high so the master's edge-detect debounce can see
-    //        a clean rising edge — otherwise a µs blip is filtered and
-    //        the next falling edge is missed entirely. */
-    //     HAL_Delay(20);
-    // }
     if(HAL_GetTick() - time > 5000){
       time = HAL_GetTick();
       __disable_irq();
       wTransferState = TRANSFER_COMPLETE;
-      hspi1.State = HAL_SPI_STATE_READY;
-      HAL_SPI_MspDeInit(&hspi1);
-      MX_SPI1_Init();
+      HAL_SPI_Abort(&hspi1);
+      HAL_SPI_DeInit(&hspi1);
+      MX_DMA_Init();
+      HAL_SPI_Init(&hspi1);
       __enable_irq();
       GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
       /* Same hold-off so the master's debounce settles */
