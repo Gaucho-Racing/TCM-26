@@ -182,20 +182,32 @@ int main(void)
         memcpy(&txBuf, tmp2, sizeof(txBuf));
         HAL_SPI_TransmitReceive_DMA(&hspi1, (uint8_t *)&txBuf, (uint8_t *)RxData, temp);
         GPIOA->BRR = (uint32_t)GPIO_PIN_4;
-        HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
+        // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_RESET);
         time = HAL_GetTick();
       }
     }
 
-    if(wTransferState == TRANSFER_ERROR){
-        wTransferState = TRANSFER_COMPLETE;    // retry on next iteration
-        GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
-
-    }
+    // if(wTransferState == TRANSFER_ERROR){
+    //     wTransferState = TRANSFER_COMPLETE;
+    //     hspi1.State = HAL_SPI_STATE_READY;
+    //     GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
+    //     /* Hold CS high so the master's edge-detect debounce can see
+    //        a clean rising edge — otherwise a µs blip is filtered and
+    //        the next falling edge is missed entirely. */
+    //     HAL_Delay(20);
+    // }
     if(HAL_GetTick() - time > 5000){
       time = HAL_GetTick();
-      wTransferState = TRANSFER_COMPLETE;    // retry on next iteration
+      __disable_irq();
+      wTransferState = TRANSFER_COMPLETE;
+      hspi1.State = HAL_SPI_STATE_READY;
+      HAL_SPI_MspDeInit(&hspi1);
+      MX_SPI1_Init();
+      __enable_irq();
       GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
+      /* Same hold-off so the master's debounce settles */
+      HAL_Delay(20);
     }
 
     // HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_3);
@@ -272,12 +284,15 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 void HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
   // HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3, GPIO_PIN_SET);
+
   GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
   wTransferState = TRANSFER_COMPLETE;
 }
 
 void HAL_SPI_ErrorCallback(SPI_HandleTypeDef *hspi)
 {
+  GPIOA->BSRR = (uint32_t)GPIO_PIN_4;
   wTransferState = TRANSFER_ERROR;
 }
 /* USER CODE END 4 */

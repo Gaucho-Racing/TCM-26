@@ -234,7 +234,7 @@ int main(int argc, char *argv[])
             UDP_PRINT("\n");
         } else if(counter >= 2000){
             if (gpioRead(18) == 0){
-                // calling();
+                calling();
                 DBG_PRINT("%05u  POLL  calling\n", seq);
             }
             counter = 0;
