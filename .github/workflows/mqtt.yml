@@ -52,8 +52,15 @@ jobs:
           context: mqtt
           platforms: ${{ matrix.platform }}
           outputs: type=image,name=ghcr.io/gaucho-racing/tcm-26/mqtt,push-by-digest=true,name-canonical=true,push=true
-          cache-from: type=gha,scope=build-${{ steps.platform.outputs.pair }}
-          cache-to: type=gha,scope=build-${{ steps.platform.outputs.pair }},mode=max
+          # Per-ref cache scopes so simultaneous main+tag pushes from a
+          # release commit can't race on the same cache namespace and
+          # poison each other's layers (we hit this on v1.2.x and ended
+          # up with a 0-byte /tcm_mqtt in :latest). Tag/feature builds
+          # fall back to main's cache so they're not cold from scratch.
+          cache-from: |
+            type=gha,scope=build-${{ steps.platform.outputs.pair }}-${{ github.ref_name }}
+            type=gha,scope=build-${{ steps.platform.outputs.pair }}-main
+          cache-to: type=gha,scope=build-${{ steps.platform.outputs.pair }}-${{ github.ref_name }},mode=max
 
       - name: Export digest
         run: |
