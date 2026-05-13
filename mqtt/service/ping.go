@@ -14,7 +14,7 @@ import (
 )
 
 func InitializePings() {
-	SubscribePong()
+	go SubscribePong()
 	go func() {
 		for {
 			PublishPing()
