@@ -20,6 +20,7 @@ var dlcLookup = [16]int{0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64}
 
 func dlcToBytes(dlc byte) int {
 	if int(dlc) >= len(dlcLookup) {
+		utils.SugarLogger.Infof("set length to zero, %d", int(dlc))
 		return 0
 	}
 	return dlcLookup[dlc]
@@ -186,7 +187,7 @@ func ListenCAN(port string) {
 		// the byte count, but 9-15 encode 12/16/20/24/32/48/64 bytes (CAN FD).
 		// Convert to actual byte count here so downstream consumers see the
 		// real payload size.
-		length := dlcToBytes(buffer[5])
+		length := int(buffer[5])
 		if length+6 > n {
 			utils.SugarLogger.Infof("[CAN] Payload length %d exceeds packet size %d, skipping", length, n)
 			continue
