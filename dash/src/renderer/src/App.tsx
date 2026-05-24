@@ -1,11 +1,7 @@
 import { useSignals } from './hooks/useSignals';
 import {
-  VehicleStatePanel,
-  SafetyPanel,
-  BatteryPanel,
   SpeedPanel,
   ConnectionsPanel,
-  DebugPanel,
   TelemetryPanel,
   TELEMETRY_SIGNALS,
   APPS_SIGNALS,

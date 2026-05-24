@@ -215,12 +215,25 @@ function TelemetryTile({ def, value }: { def: TileDef; value: number | undefined
 // ── Panel ───────────────────────────────────────────────────────────
 
 export function TelemetryPanel() {
+  // Read each signal explicitly so ESLint can verify hook rules statically.
+  const v00 = useSignal('ecu_max_cell_temp');
+  const v01 = useSignal('acu_12v_voltage');
+  const v02 = useSignal('ecu_tractive_system_voltage');
+  const v03 = useSignal('acu_accumulator_current');
+  const v04 = useSignal('placeholder_dti_ac_current_limit');
+  const v05 = useSignal('ecu_brake_pedal_travel');
+  const v06 = useSignal('gr_inv_motor_temp');
+  const v07 = useSignal('acu_max_cell_temp');
+  const v08 = useSignal('gr_inv_u_mosfet_temp');
+  const v09 = useSignal('acu_hv_input_current');
+  const values = [v00, v01, v02, v03, v04, v05, v06, v07, v08, v09];
+
   return (
     <div className="flex min-h-0 flex-col gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
       <SectionTitle>Telemetry</SectionTitle>
       <div className="grid grid-cols-2 gap-2">
-        {TILES.map((def) => (
-          <TelemetryTile key={def.signal} def={def} value={useSignal(def.signal)} />
+        {TILES.map((def, i) => (
+          <TelemetryTile key={def.signal} def={def} value={values[i]} />
         ))}
       </div>
     </div>

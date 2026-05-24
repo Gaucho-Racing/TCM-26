@@ -35,37 +35,17 @@ interface Sample {
 const samples: Sample[] = [];
 let lastSampleAt = 0;
 
-function collect(): void {
+function collect(s1: number, s2: number): void {
   const now = Date.now();
-
-  // Always keep the most recent sample so the line doesn't gap.
-  // Throttle to ~SAMPLE_INTERVAL_MS to avoid millions of points.
-  const s1 = useSignalStore_s1();
-  const s2 = useSignalStore_s2();
   if (now - lastSampleAt < SAMPLE_INTERVAL_MS && samples.length > 0) return;
 
   samples.push({ t: now, a1: s1, a2: s2 });
   lastSampleAt = now;
 
-  // Prune samples older than the window.
   const cutoff = now - WINDOW_MS;
   while (samples.length > 0 && samples[0]!.t < cutoff) {
     samples.shift();
   }
-}
-
-// We inline the signal reads this way so collect() can be called from
-// inside a React render without violating hooks rules.
-let _s1 = 0;
-let _s2 = 0;
-
-function useSignalStore_s1(): number {
-  _s1 = useSignal('ecu_apps_1_signal');
-  return _s1;
-}
-function useSignalStore_s2(): number {
-  _s2 = useSignal('ecu_apps_2_signal');
-  return _s2;
 }
 
 // ── SVG helpers ─────────────────────────────────────────────────────
@@ -97,7 +77,7 @@ function points(samples: Sample[], now: number, accessor: (s: Sample) => number)
 
 // ── Grid ────────────────────────────────────────────────────────────
 
-function Grid({ now }: { now: number }) {
+function Grid() {
   const lines: React.ReactNode[] = [];
 
   // Horizontal grid lines at 0%, 25%, 50%, 75%, 100%
@@ -169,14 +149,18 @@ function Grid({ now }: { now: number }) {
 // ── Panel ───────────────────────────────────────────────────────────
 
 export function APPSPanel() {
+  // Read signals at the top level (hook rules require this).
+  const apps1 = useSignal('ecu_apps_1_signal');
+  const apps2 = useSignal('ecu_apps_2_signal');
+
   // Drive sampling by calling useNow() so the component re-renders
   // frequently enough to both collect samples and update the X axis.
   const now = useNow(SAMPLE_INTERVAL_MS);
 
-  // Collect a new sample on every render (throttled inside collect()).
-  collect();
+  // Collect a new sample on every render.
+  collect(apps1, apps2);
 
-  const snapshots = samples; // local alias for readability
+  const snapshots = samples;
 
   // Build the two polylines.
   const p1 = snapshots.length > 0 ? points(snapshots, now, (s) => s.a1) : '';
@@ -192,7 +176,7 @@ export function APPSPanel() {
         className="w-full overflow-visible"
         style={{ maxWidth: SVG_W }}
       >
-        <Grid now={now} />
+        <Grid />
 
         {p1 && (
           <polyline
