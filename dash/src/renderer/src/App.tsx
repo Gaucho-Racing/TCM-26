@@ -1,7 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
-import { useSignals, VEHICLE_ID } from './hooks/useSignals';
-import { useSignal, useSignalStore } from './store/signals';
-import { socColor, stateLabel, stateClassNames, ECU_STATE } from './lib/state';
+import { useSignals } from './hooks/useSignals';
+import {
+  VehicleStatePanel,
+  SafetyPanel,
+  BatteryPanel,
+  SpeedPanel,
+  ConnectionsPanel,
+  DebugPanel,
+  TelemetryPanel,
+  TELEMETRY_SIGNALS,
+  APPS_SIGNALS,
+  CurrentPanel,
+} from './modules';
 
 const SUBSCRIBED_SIGNALS = [
   // ECU state machine
@@ -32,26 +41,17 @@ const SUBSCRIBED_SIGNALS = [
   'tcm_camera_ok',
   'tcm_mapache_ping',
   'tcm_cache_size',
+  // Telemetry panel signals
+  ...TELEMETRY_SIGNALS,
+  // APPS panel signals
+  ...APPS_SIGNALS,
 ] as const;
 
-// LOCAL pill threshold. WS open + last signal under STALE_MS → green;
-// past it → yellow ("stale Ns"). The WS being open already means the
-// dash↔tcm-gr26 pipe is alive, so we never use red for "open but no
-// fresh data" — that's the warn state. Red is reserved for WS actually
-// closed. 6s leaves room for an idle car where only TCM Status (5s
-// cadence) is flowing while still catching a real upstream outage fast.
-const LOCAL_STALE_MS = 6000;
-// CLOUD freshness — TCM Status publishes every 5s (currently). If we
-// haven't seen one in 3× the interval, demote to yellow regardless of
-// the cached bit values.
-const TCM_STATUS_STALE_MS = 15000;
-// Cloud latency above this gets a yellow pill instead of green.
-const CLOUD_PING_WARN_MS = 500;
-
-// ─────────────────────── App ───────────────────────
+// ─────────────────────── Layout ───────────────────────
 
 export default function App() {
   useSignals(SUBSCRIBED_SIGNALS);
+
   return (
     <div className="relative grid h-screen w-screen grid-cols-[1fr_1.6fr_1fr] gap-3 overflow-hidden bg-neutral-950 p-4">
       <LeftColumn />
@@ -61,366 +61,25 @@ export default function App() {
   );
 }
 
+/** Left third: vehicle state, safety, battery. */
 function LeftColumn() {
   return (
-    <div className="grid min-h-0 grid-rows-3 gap-3">
-      <VehicleStatePanel />
-      <SafetyPanel />
-      <BatteryPanel />
+    <div className="grid min-h-0 grid-rows-[1fr_2fr] gap-3">
+      {/*<VehicleStatePanel />*/}
+      {/*<SafetyPanel />*/}
+      {/*<BatteryPanel />*/}
+      <ConnectionsPanel />
+      <CurrentPanel />
     </div>
   );
 }
 
+/** Right third: connections + debug info. */
 function RightColumn() {
-  // Connections shrinks to ~1/3, debug expands to ~2/3 — bigger text
-  // there + room for the extra rows.
   return (
     <div className="grid min-h-0 grid-rows-[auto_1fr] gap-3">
-      <ConnectionsPanel />
-      <DebugPanel />
+      {/*<DebugPanel />*/}
+      <TelemetryPanel />
     </div>
   );
-}
-
-// ───────────────────────── LEFT ─────────────────────────
-
-function VehicleStatePanel() {
-  const ecuState = useSignal('ecu_ecu_state');
-  const tsActive = ecuState === ECU_STATE.PRECHARGE_COMPLETE || ecuState === ECU_STATE.DRIVE_ACTIVE;
-  const rtd = ecuState === ECU_STATE.DRIVE_ACTIVE;
-  const c = stateClassNames(ecuState);
-
-  return (
-    <div
-      className={`flex min-h-0 flex-col items-center justify-center gap-3 rounded-2xl border p-3 transition-colors ${c.bg} ${c.border} ${c.pulse}`}
-    >
-      <SectionTitle>Vehicle State</SectionTitle>
-      <div className={`text-5xl font-black tracking-tight ${c.text}`}>{stateLabel(ecuState)}</div>
-      <div className="flex gap-3">
-        <Indicator label="TS" active={tsActive} />
-        <Indicator label="RTD" active={rtd} />
-      </div>
-    </div>
-  );
-}
-
-function Indicator({ label, active }: { label: string; active: boolean }) {
-  return (
-    <div
-      className={`rounded-lg border px-5 py-2 text-2xl font-black tracking-widest transition-colors ${
-        active
-          ? 'border-emerald-400/60 bg-emerald-500/20 text-emerald-300 shadow-[0_0_18px_-6px_rgb(52_211_153/0.7)]'
-          : 'border-neutral-700 bg-neutral-900/60 text-neutral-600'
-      }`}
-    >
-      {label}
-    </div>
-  );
-}
-
-// Safety latch tri-state. The ECU exposes two bits per system: an
-// active-fault bit (`ecu_led_X`) and an armed-latch bit
-// (`ecu_led_X_latch`). The latch bit is 1 in the safe/armed state and
-// drops to 0 when a fault trips it; it must be manually reset back to
-// 1. Active fault wins regardless of latch. No fault + armed latch →
-// green 'latched' (safe). No fault + tripped latch → yellow
-// 'unlatched' (fault cleared, manual reset required).
-type SafetyStatus = 'latched' | 'unlatched' | 'warn';
-
-function safetyStatus(warn: boolean, latched: boolean): SafetyStatus {
-  if (warn) return 'warn';
-  if (latched) return 'latched';
-  return 'unlatched';
-}
-
-function SafetyPanel() {
-  const bms = useSignal('ecu_led_bms') > 0;
-  const imd = useSignal('ecu_led_imd') > 0;
-  const bspd = useSignal('ecu_led_bspd') > 0;
-  const bmsLatch = useSignal('ecu_led_bms_latch') > 0;
-  const imdLatch = useSignal('ecu_led_imd_latch') > 0;
-  const bspdLatch = useSignal('ecu_led_bspd_latch') > 0;
-
-  return (
-    <div className="flex min-h-0 flex-col gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
-      <SectionTitle>Safety</SectionTitle>
-      <div className="grid flex-1 grid-cols-3 gap-2">
-        <SafetyTile label="BMS" status={safetyStatus(bms, bmsLatch)} />
-        <SafetyTile label="IMD" status={safetyStatus(imd, imdLatch)} />
-        <SafetyTile label="BSPD" status={safetyStatus(bspd, bspdLatch)} />
-      </div>
-    </div>
-  );
-}
-
-const SAFETY_TILE_STYLES: Record<SafetyStatus, string> = {
-  warn: 'animate-pulse border-red-500/60 bg-red-500/20 text-red-300 shadow-[0_0_24px_-4px_rgb(239_68_68/0.7)]',
-  unlatched:
-    'border-amber-400/60 bg-amber-500/15 text-amber-300 shadow-[0_0_22px_-6px_rgb(251_191_36/0.6)]',
-  latched: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400',
-};
-
-const SAFETY_TILE_SUBLABEL: Record<SafetyStatus, string> = {
-  warn: '● FAULT',
-  unlatched: '● UNLATCHED',
-  latched: '○ LATCHED',
-};
-
-function SafetyTile({ label, status }: { label: string; status: SafetyStatus }) {
-  return (
-    <div
-      className={`flex flex-col items-center justify-center rounded-xl border ${SAFETY_TILE_STYLES[status]}`}
-    >
-      <div className="text-3xl font-black tracking-widest">{label}</div>
-      <div className="mt-1 text-sm font-bold tracking-[0.2em] uppercase">
-        {SAFETY_TILE_SUBLABEL[status]}
-      </div>
-    </div>
-  );
-}
-
-function BatteryPanel() {
-  const soc = useSignal('ecu_accumulator_soc');
-  const clamped = Math.max(0, Math.min(100, soc));
-  return (
-    <div className="flex min-h-0 flex-col justify-center gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 px-5 py-3">
-      <div className="flex items-baseline justify-between">
-        <SectionTitle>Battery</SectionTitle>
-        <div className="text-6xl font-black text-neutral-100 tabular-nums">
-          {clamped.toFixed(0)}
-          <span className="ml-1 text-xl text-neutral-500">%</span>
-        </div>
-      </div>
-      <div className="h-4 overflow-hidden rounded-full bg-neutral-800">
-        <div
-          className={`h-full ${socColor(clamped)} transition-[width] duration-500 ease-out`}
-          style={{ width: `${clamped}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ───────────────────────── MIDDLE ─────────────────────────
-
-const RPM_MAX = 6000;
-
-function SpeedPanel() {
-  const speed = useSignal('ecu_vehicle_speed');
-  const rpm = useSignal('inverter_motor_rpm');
-  const rpmPct = Math.max(0, Math.min(100, (Math.abs(rpm) / RPM_MAX) * 100));
-
-  return (
-    <div className="relative flex flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 px-6 py-4">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(132,18,252,0.10),rgba(225,5,163,0.05)_55%,transparent_75%)]" />
-      <div className="relative flex flex-1 flex-col items-center justify-center">
-        <div className="text-[14rem] leading-none font-black text-neutral-50 tabular-nums">
-          {Math.round(speed)}
-        </div>
-        <div className="-mt-3 text-3xl font-semibold tracking-[0.4em] text-neutral-500">MPH</div>
-      </div>
-      <div className="relative w-full">
-        <div className="flex items-baseline justify-between text-[10px] font-bold tracking-[0.3em] text-neutral-500 uppercase">
-          <span>RPM</span>
-          <span className="text-base text-neutral-200 tabular-nums">{Math.round(rpm)}</span>
-        </div>
-        <div className="mt-1 h-3 overflow-hidden rounded-full bg-neutral-800">
-          <div
-            className="h-full bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 transition-[width] duration-150 ease-out"
-            style={{ width: `${rpmPct}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ───────────────────────── RIGHT ─────────────────────────
-
-type ConnStatus = 'ok' | 'warn' | 'down' | 'unknown';
-
-const STATUS_DOT: Record<ConnStatus, string> = {
-  ok: 'bg-emerald-400 shadow-[0_0_10px_rgb(52_211_153/0.9)]',
-  warn: 'bg-amber-400 shadow-[0_0_10px_rgb(251_191_36/0.9)]',
-  down: 'bg-red-500 shadow-[0_0_10px_rgb(239_68_68/0.9)] animate-pulse',
-  unknown: 'bg-neutral-600',
-};
-
-const STATUS_TEXT: Record<ConnStatus, string> = {
-  ok: 'text-emerald-300',
-  warn: 'text-amber-300',
-  down: 'text-red-300',
-  unknown: 'text-neutral-500',
-};
-
-// Compact connection row — colored dot + label + value, all on one line.
-// Replaces the old tile-style pills so the panel can shrink.
-function ConnRow({ label, status, value }: { label: string; status: ConnStatus; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-2 text-xl">
-      <div className="flex items-center gap-2">
-        <span className={`h-3.5 w-3.5 rounded-full ${STATUS_DOT[status]}`} />
-        <span className="font-bold tracking-widest text-neutral-300">{label}</span>
-      </div>
-      <span className={`font-mono text-lg font-bold tabular-nums ${STATUS_TEXT[status]}`}>
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function ConnectionsPanel() {
-  const wsConnected = useSignalStore((s) => s.connected);
-  const lastSignalAt = useSignalStore((s) => s.lastSignalAt);
-  const cloudConnOk = useSignal('tcm_connection_ok') > 0;
-  const cloudMqttOk = useSignal('tcm_mqtt_ok') > 0;
-  const cloudPing = useSignal('tcm_mapache_ping');
-  // We use any tcm_* signal's receivedAt as a proxy for "when did the
-  // last TCM Status arrive". TCM Status publishes all of its bits +
-  // ping in one CAN frame, so any of them stamp the same instant.
-  const tcmReceivedAt = useSignalStore((s) => s.signals['tcm_mqtt_ok']?.receivedAt);
-  const now = useNow();
-
-  // LOCAL: only `down` when the WS is actually closed. With WS open,
-  // four-state ladder driven by signal freshness:
-  //   - no signal seen yet → unknown ('no data')
-  //   - stale (>6s)        → warn   ('stale Ns')
-  //   - fresh              → ok     ('connected')
-  const localAge = lastSignalAt ? now - lastSignalAt : Infinity;
-  let localStatus: ConnStatus;
-  let localValue: string;
-  if (!wsConnected) {
-    localStatus = 'down';
-    localValue = 'down';
-  } else if (!lastSignalAt) {
-    localStatus = 'unknown';
-    localValue = 'no data';
-  } else if (localAge > LOCAL_STALE_MS) {
-    localStatus = 'warn';
-    localValue = `stale ${(localAge / 1000).toFixed(0)}s`;
-  } else {
-    localStatus = 'ok';
-    localValue = 'connected';
-  }
-
-  // CLOUD: never-received → unknown. Recent TCM Status with healthy
-  // bits → ok (or yellow if ping > 500ms). Recent TCM Status but bits
-  // say down → down. TCM Status itself stale → yellow regardless of
-  // cached bit values (we don't trust them once they age out).
-  const cloudUp = cloudConnOk && cloudMqttOk;
-  const tcmAge = tcmReceivedAt === undefined ? Infinity : now - tcmReceivedAt;
-  let cloudStatus: ConnStatus;
-  let cloudValue: string;
-  if (tcmReceivedAt === undefined) {
-    cloudStatus = 'unknown';
-    cloudValue = 'no status';
-  } else if (tcmAge > TCM_STATUS_STALE_MS) {
-    cloudStatus = 'warn';
-    cloudValue = `stale ${(tcmAge / 1000).toFixed(0)}s`;
-  } else if (!cloudUp) {
-    cloudStatus = 'down';
-    cloudValue = 'down';
-  } else if (cloudPing > CLOUD_PING_WARN_MS) {
-    cloudStatus = 'warn';
-    cloudValue = `${Math.round(cloudPing)} ms`;
-  } else {
-    cloudStatus = 'ok';
-    cloudValue = `${Math.round(cloudPing)} ms`;
-  }
-
-  return (
-    <div className="flex min-h-0 flex-col gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 px-3 py-2">
-      <SectionTitle>Connections</SectionTitle>
-      <ConnRow label="LOCAL" status={localStatus} value={localValue} />
-      <ConnRow label="CLOUD" status={cloudStatus} value={cloudValue} />
-    </div>
-  );
-}
-
-function DebugPanel() {
-  const messageCount = useSignalStore((s) => s.messageCount);
-  const lastSignalName = useSignalStore((s) => s.lastSignalName);
-  const lastSignalAt = useSignalStore((s) => s.lastSignalAt);
-  const signalCount = useSignalStore((s) => Object.keys(s.signals).length);
-  const epicShelterOk = useSignal('tcm_epic_shelter_ok');
-  const cameraOk = useSignal('tcm_camera_ok');
-  const cacheSize = useSignal('tcm_cache_size');
-  const ping = useSignal('tcm_mapache_ping');
-  const now = useNow();
-  const ageMs = lastSignalAt ? now - lastSignalAt : -1;
-  const rate = useMessageRate();
-
-  return (
-    <div className="flex min-h-0 flex-col gap-1.5 overflow-hidden rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
-      <SectionTitle>Debug</SectionTitle>
-      <div className="flex items-baseline justify-between gap-2 text-lg">
-        <span className="text-base tracking-widest text-neutral-500 uppercase">vehicle</span>
-        <span className="from-gr-pink to-gr-purple bg-gradient-to-r bg-clip-text font-black tracking-widest text-transparent tabular-nums">
-          {VEHICLE_ID.toUpperCase()}
-        </span>
-      </div>
-      <DebugRow label="msgs" value={messageCount.toLocaleString()} />
-      <DebugRow label="rate" value={`${rate.toFixed(1)} /s`} />
-      <DebugRow label="signals" value={signalCount.toString()} />
-      <DebugRow label="age" value={ageMs >= 0 ? `${(ageMs / 1000).toFixed(1)}s` : '—'} />
-      <DebugRow label="last" value={lastSignalName || '—'} mono />
-      <DebugRow label="ping" value={`${Math.round(ping)} ms`} />
-      <DebugRow label="cache" value={cacheSize.toString()} />
-      <DebugRow label="shelter" value={epicShelterOk ? 'ok' : '—'} />
-      <DebugRow label="camera" value={cameraOk ? 'ok' : '—'} />
-    </div>
-  );
-}
-
-function DebugRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-2 text-lg">
-      <span className="text-base tracking-widest text-neutral-500 uppercase">{label}</span>
-      <span
-        className={`text-neutral-100 tabular-nums ${mono ? 'truncate font-mono text-sm' : 'font-bold'}`}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
-
-// ─────────────────────── shared ───────────────────────
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="from-gr-pink to-gr-purple bg-gradient-to-r bg-clip-text text-base font-bold tracking-[0.3em] text-transparent uppercase">
-      {children}
-    </div>
-  );
-}
-
-// 4 Hz tick so the staleness badge + age row update even when no new
-// signals are arriving (otherwise they'd freeze at the moment of the
-// last incoming message).
-function useNow(intervalMs: number = 250): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(id);
-  }, [intervalMs]);
-  return now;
-}
-
-// Rolling messages-per-second counter. Updates once per second from the
-// useNow tick, so it's cheap and stable on screen.
-function useMessageRate(): number {
-  const messageCount = useSignalStore((s) => s.messageCount);
-  const now = useNow();
-  const last = useRef({ count: messageCount, time: now, rate: 0 });
-
-  if (now - last.current.time >= 1000) {
-    const dt = (now - last.current.time) / 1000;
-    last.current = {
-      count: messageCount,
-      time: now,
-      rate: (messageCount - last.current.count) / dt,
-    };
-  }
-  return last.current.rate;
 }
