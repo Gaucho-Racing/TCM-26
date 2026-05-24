@@ -19,8 +19,7 @@ function Indicator({ label, active }: { label: string; active: boolean }) {
 
 export function VehicleStatePanel() {
   const ecuState = useSignal('ecu_ecu_state');
-  const tsActive =
-    ecuState === ECU_STATE.PRECHARGE_COMPLETE || ecuState === ECU_STATE.DRIVE_ACTIVE;
+  const tsActive = ecuState === ECU_STATE.PRECHARGE_COMPLETE || ecuState === ECU_STATE.DRIVE_ACTIVE;
   const rtd = ecuState === ECU_STATE.DRIVE_ACTIVE;
   const c = stateClassNames(ecuState);
 
