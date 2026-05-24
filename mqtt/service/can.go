@@ -165,9 +165,36 @@ func ListenCAN(port string) {
 		if shouldLog {
 			utils.SugarLogger.Infof("[CAN] CAN ID: %d (0x%08x)", canID, canID)
 		}
-		nodeID := uint8((canID >> 20) & 0xFF)
-		msgID := uint16((canID >> 8) & 0xFFF)
-		targetID := uint8(canID & 0xFF)
+
+		type canMeta struct {
+			nodeID   uint8
+			msgID    uint16
+			targetID uint8
+		}
+		specialCANIDs := map[uint32]canMeta{
+			// Non-standard CAN IDs used by DTI inverters and tcm2can.
+			// These are raw extended IDs, not GRCAN-format IDs.
+			0xC16:  {nodeID: 0x2, msgID: 0xC16, targetID: 0x42},
+			0x2016: {nodeID: 0, msgID: 0x2016, targetID: 0},
+			0x2116: {nodeID: 0, msgID: 0x2116, targetID: 0},
+			0x2216: {nodeID: 0, msgID: 0x2216, targetID: 0},
+			0x2316: {nodeID: 0, msgID: 0x2316, targetID: 0},
+			0x2416: {nodeID: 0, msgID: 0x2416, targetID: 0},
+		}
+
+		var nodeID uint8
+		var msgID uint16
+		var targetID uint8
+		if m, ok := specialCANIDs[canID]; ok {
+			nodeID = m.nodeID
+			msgID = m.msgID
+			targetID = m.targetID
+		} else {
+			// Standard GRCAN format: nodeID<<20 | msgID<<8 | targetID
+			nodeID = uint8((canID >> 20) & 0xFF)
+			msgID = uint16((canID >> 8) & 0xFFF)
+			targetID = uint8(canID & 0xFF)
+		}
 
 		if shouldLog {
 			utils.SugarLogger.Infof("[CAN] Msg ID: %d (0x%03x)", msgID, msgID)
