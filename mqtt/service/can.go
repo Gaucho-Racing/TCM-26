@@ -54,7 +54,7 @@ var nodeIDMap = map[byte]string{
 	0x1D: "brake_temp_fr",
 	0x1E: "brake_temp_rl",
 	0x1F: "brake_temp_rr",
-	0x20: "dgps",
+	0x30: "dgps",
 }
 
 func PublishData(canID uint32, nodeID uint8, messageID uint16, targetID uint8, data []byte) {

@@ -4,7 +4,7 @@ import { SectionTitle } from './SectionTitle';
 
 // ── Signal definitions ──────────────────────────────────────────────
 
-export const APPS_SIGNALS = ['ecu_apps_1_signal', 'ecu_apps_2_signal'] as const;
+export const APPS_SIGNALS = ['ecu_apps1_signal', 'ecu_apps2_signal'] as const;
 
 // ── Constants ───────────────────────────────────────────────────────
 
@@ -14,8 +14,11 @@ const WINDOW_MS = 10_000;
 /** How often to sample (and re-render), in milliseconds. */
 const SAMPLE_INTERVAL_MS = 80; // ~12.5 Hz → ~125 points per 10s window
 
+/** APPS raw ADC range — 12-bit, so 0–4095. */
+const APPS_MAX = 4096;
+
 /** Dimensions of the plot area inside the SVG. */
-const PLOT_PAD = { top: 20, right: 8, bottom: 28, left: 38 };
+const PLOT_PAD = { top: 20, right: 8, bottom: 28, left: 56 };
 const SVG_W = 360;
 const SVG_H = 280;
 const PLOT_W = SVG_W - PLOT_PAD.left - PLOT_PAD.right;
@@ -25,8 +28,8 @@ const PLOT_H = SVG_H - PLOT_PAD.top - PLOT_PAD.bottom;
 
 interface Sample {
   t: number; // millis since epoch
-  a1: number; // APPS 1 (%, 0–100)
-  a2: number; // APPS 2 (%, 0–100)
+  a1: number; // APPS 1 (raw ADC, 0–4096)
+  a2: number; // APPS 2 (raw ADC, 0–4096)
 }
 
 // We keep samples in a module-level array so they persist across renders
@@ -50,9 +53,9 @@ function collect(s1: number, s2: number): void {
 
 // ── SVG helpers ─────────────────────────────────────────────────────
 
-/** Map a data value (0–100) to SVG y coordinate (bottom = 0). */
+/** Map a data value (0–4096) to SVG y coordinate (bottom = 0). */
 function yVal(v: number): number {
-  return PLOT_PAD.top + PLOT_H - (Math.max(0, Math.min(100, v)) / 100) * PLOT_H;
+  return PLOT_PAD.top + PLOT_H - (Math.max(0, Math.min(APPS_MAX, v)) / APPS_MAX) * PLOT_H;
 }
 
 /** Map a timestamp to SVG x coordinate. Latest time = right edge. */
@@ -80,13 +83,13 @@ function points(samples: Sample[], now: number, accessor: (s: Sample) => number)
 function Grid() {
   const lines: React.ReactNode[] = [];
 
-  // Horizontal grid lines at 0%, 25%, 50%, 75%, 100%
-  for (let pct = 0; pct <= 100; pct += 25) {
-    const y = yVal(pct);
-    const isAxis = pct === 0;
+  // Horizontal grid lines at 0, 1024, 2048, 3072, 4096
+  for (let val = 0; val <= APPS_MAX; val += 1024) {
+    const y = yVal(val);
+    const isAxis = val === 0;
     lines.push(
       <line
-        key={`h${pct}`}
+        key={`h${val}`}
         x1={PLOT_PAD.left}
         y1={y}
         x2={PLOT_PAD.left + PLOT_W}
@@ -95,7 +98,7 @@ function Grid() {
         strokeWidth={isAxis ? 1 : 0.5}
       />,
       <text
-        key={`hl${pct}`}
+        key={`hl${val}`}
         x={PLOT_PAD.left + PLOT_W + 6}
         y={y + 4}
         fill="rgb(113 113 122)"
@@ -103,7 +106,7 @@ function Grid() {
         textAnchor="start"
         className="tabular-nums"
       >
-        {pct}
+        {val}
       </text>,
     );
   }
@@ -150,8 +153,8 @@ function Grid() {
 
 export function APPSPanel() {
   // Read signals at the top level (hook rules require this).
-  const apps1 = useSignal('ecu_apps_1_signal');
-  const apps2 = useSignal('ecu_apps_2_signal');
+  const apps1 = useSignal('ecu_apps1_signal');
+  const apps2 = useSignal('ecu_apps2_signal');
 
   // Drive sampling by calling useNow() so the component re-renders
   // frequently enough to both collect samples and update the X axis.
