@@ -107,19 +107,34 @@ resets).
 
 ## Deploying to the Jetson
 
-See [the deployment notes below](#deployment) — briefly:
+Build on the Jetson (cross-build fpm doesn't run on arm64, so the `.deb`
+target will fail — use the AppImage instead):
 
-1. Cross-build for arm64: `npm run build:linux`
-2. Copy `dist/gr26-dash_<ver>_arm64.deb` to the Jetson
-3. `sudo dpkg -i gr26-dash_<ver>_arm64.deb`
-4. Drop the systemd unit (next section) into `/etc/systemd/system/`
-5. `systemctl --user enable --now gr26-dash`
+```bash
+cd dash
+npm run build:linux
+```
+
+The arm64 AppImage lands at `dist/GR26 Dash-<ver>-arm64.AppImage`. Move it
+into place and set up the systemd service:
+
+```bash
+# Move the AppImage to the expected path
+sudo mkdir -p "/opt/GR26 Dash"
+sudo mv dist/"GR26 Dash-1.3.0-arm64.AppImage" "/opt/GR26 Dash/gr26-dash"
+```
+
+> **FUSE note**: AppImages require FUSE to run. If missing, install it:
+> `sudo apt update && sudo apt install -y fuse`.
+> Without FUSE you can extract the contents with
+> `"/opt/GR26 Dash/gr26-dash" --appimage-extract` and run the binary inside
+> `squashfs-root/` directly, but installing FUSE is simpler.
 
 ## Deployment
 
 ### Option A: systemd user service (recommended)
 
-`~/.config/systemd/user/gr26-dash.service` on the Jetson:
+Drop this unit at `~/.config/systemd/user/gr26-dash.service` on the Jetson:
 
 ```ini
 [Unit]
@@ -145,6 +160,8 @@ systemctl --user enable --now gr26-dash
 loginctl enable-linger $USER   # so the service stays up without a login session
 ```
 
+Logs: `journalctl --user -u gr26-dash`.
+
 ### Option B: xdg-autostart desktop entry
 
 If you'd rather just have it launch as part of the GUI session:
@@ -159,8 +176,8 @@ Exec=/opt/GR26 Dash/gr26-dash
 X-GNOME-Autostart-enabled=true
 ```
 
-systemd is more robust (auto-restart on crash, proper logging via
-`journalctl --user -u gr26-dash`), so prefer that for the deployed car.
+systemd is more robust (auto-restart on crash, proper logging),
+so prefer that for the deployed car.
 
 ## Code signing
 

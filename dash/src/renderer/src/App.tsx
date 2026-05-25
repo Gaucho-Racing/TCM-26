@@ -6,6 +6,7 @@ import {
   TELEMETRY_SIGNALS,
   APPS_SIGNALS,
   CurrentPanel,
+  APPSPanel,
 } from './modules';
 
 const SUBSCRIBED_SIGNALS = [
@@ -65,7 +66,7 @@ function LeftColumn() {
       {/*<SafetyPanel />*/}
       {/*<BatteryPanel />*/}
       <ConnectionsPanel />
-      <CurrentPanel />
+      <APPSPanel />
     </div>
   );
 }
