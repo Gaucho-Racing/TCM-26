@@ -5,8 +5,8 @@ Wants=network-online.target docker.service
 
 [Service]
 Type=simple
-WorkingDirectory=/opt/gr-screen
-ExecStart=/usr/bin/env npm run start -- --hostname 127.0.0.1 --port 3000
+WorkingDirectory=/opt/gr-screen/current
+ExecStart=/usr/bin/env npm run start:electron
 Restart=always
 RestartSec=3
 Environment=NODE_ENV=production

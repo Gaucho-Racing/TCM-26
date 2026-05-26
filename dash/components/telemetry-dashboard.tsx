@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import type { TouchEvent } from "react";
 import { TelemetryData } from "@/types/telemetry";
 import { Speedometer } from "./speedometer";
 import { StateOfCharge } from "./state-of-charge";
@@ -19,6 +20,7 @@ export function TelemetryDashboard({ data }: TelemetryDashboardProps) {
   const [showDetailedView, setShowDetailedView] = useState(false);
   const [showDebugView, setShowDebugView] = useState(false);
   const [showDebugFDView, setShowDebugFDView] = useState(false);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -37,8 +39,39 @@ export function TelemetryDashboard({ data }: TelemetryDashboardProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    setTouchStart({ x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    if (!touchStart) return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+
+    const deltaX = touch.clientX - touchStart.x;
+    const deltaY = touch.clientY - touchStart.y;
+    const isHorizontalSwipe = Math.abs(deltaX) > Math.abs(deltaY);
+    const SWIPE_THRESHOLD_PX = 50;
+
+    if (isHorizontalSwipe && Math.abs(deltaX) >= SWIPE_THRESHOLD_PX) {
+      if (deltaX < 0) {
+        setShowDetailedView(true);
+      } else {
+        setShowDetailedView(false);
+      }
+    }
+
+    setTouchStart(null);
+  };
+
   return (
-    <div className="bg-zinc-950 rounded-2xl p-6 w-full max-w-[1600px] min-h-[600px] mx-auto border border-zinc-800 flex flex-col justify-between">
+    <div
+      className="bg-zinc-950 rounded-2xl p-6 w-full max-w-[1600px] min-h-[600px] mx-auto border border-zinc-800 flex flex-col justify-between"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Main Content Area */}
       <div className="grid grid-cols-[400px_minmax(0,1fr)_400px] items-start gap-4 flex-1">
         {/* Left Panel - only visible in detailed view */}

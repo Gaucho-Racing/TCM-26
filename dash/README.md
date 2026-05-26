@@ -9,6 +9,22 @@ npm install
 npm run dev
 ```
 
+## Desktop app mode (Electron)
+
+Run in an Electron window (instead of a browser tab):
+
+```bash
+npm install
+npm run dev:electron
+```
+
+Production-like local run:
+
+```bash
+npm run build
+npm run start:electron
+```
+
 ## Live telemetry configuration
 
 Copy `.env.example` to `.env.local` and adjust if needed:

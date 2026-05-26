@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:electron": "concurrently -k \"next dev --hostname 127.0.0.1 --port 3000\" \"wait-on tcp:127.0.0.1:3000 && env -u ELECTRON_RUN_AS_NODE electron ./electron/main.cjs\"",
     "build": "next build",
     "start": "next start",
+    "start:electron": "concurrently -k \"next start --hostname 127.0.0.1 --port 3000\" \"wait-on tcp:127.0.0.1:3000 && env -u ELECTRON_RUN_AS_NODE electron ./electron/main.cjs\"",
     "lint": "eslint .",
     "preflight:live": "bash ./scripts/preflight-live-dash.sh",
     "cutover:staging": "bash ./scripts/cutover-live-dash.sh staging",
@@ -71,6 +73,9 @@
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",
-    "typescript": "5.7.3"
+    "typescript": "5.7.3",
+    "concurrently": "^9.2.1",
+    "electron": "^37.0.2",
+    "wait-on": "^8.0.5"
   }
 }
