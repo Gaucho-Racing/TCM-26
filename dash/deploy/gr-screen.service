@@ -1,0 +1,20 @@
+[Unit]
+Description=GR-Screen Live Dashboard
+After=graphical-session.target network-online.target docker.service
+Wants=network-online.target docker.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/gr-screen
+ExecStart=/usr/bin/env npm run start -- --hostname 127.0.0.1 --port 3000
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+Environment=NEXT_PUBLIC_TELEMETRY_WS_URL=ws://localhost:8001/gr26/live
+Environment=NEXT_PUBLIC_GR26_VEHICLE_ID=gr26
+Environment=NEXT_PUBLIC_GR26_REFRESH_RATE_HZ=30
+Environment=NEXT_PUBLIC_GR26_STALE_AFTER_MS=2500
+Environment=NEXT_PUBLIC_GR26_RECONNECT_MS=1000
+
+[Install]
+WantedBy=graphical-session.target
