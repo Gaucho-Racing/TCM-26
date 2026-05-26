@@ -25,6 +25,16 @@ npm run build
 npm run start:electron
 ```
 
+Headless-safe runtime (for SSH sessions or Ubuntu without X/Wayland):
+
+- If display is available, launches Electron.
+- If no display but `xvfb-run` is installed, launches Electron in virtual display.
+- If no display and no `xvfb-run`, runs Next.js in server mode and keeps service alive.
+
+```bash
+npm run start:app
+```
+
 ## Live telemetry configuration
 
 Copy `.env.example` to `.env.local` and adjust if needed:
