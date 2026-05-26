@@ -46,10 +46,10 @@ wait_for_next
 
 if [[ "$has_display" == "true" || "${FORCE_ELECTRON:-0}" == "1" ]]; then
   echo "Display detected. Launching Electron."
-  env -u ELECTRON_RUN_AS_NODE electron ./electron/main.cjs
+  APP_URL="http://${HOST}:${PORT}" APP_HOST="$HOST" APP_PORT="$PORT" env -u ELECTRON_RUN_AS_NODE electron ./electron/main.cjs
 elif command -v xvfb-run >/dev/null 2>&1; then
   echo "No display detected. Launching Electron with xvfb-run."
-  xvfb-run -a env -u ELECTRON_RUN_AS_NODE electron ./electron/main.cjs
+  APP_URL="http://${HOST}:${PORT}" APP_HOST="$HOST" APP_PORT="$PORT" xvfb-run -a env -u ELECTRON_RUN_AS_NODE electron ./electron/main.cjs
 else
   echo "No display or xvfb-run found. Running in headless server mode."
   wait "$NEXT_PID"

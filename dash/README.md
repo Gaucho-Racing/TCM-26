@@ -35,6 +35,24 @@ Headless-safe runtime (for SSH sessions or Ubuntu without X/Wayland):
 npm run start:app
 ```
 
+Install a clickable launcher (Linux desktop menu):
+
+```bash
+npm run install:desktop-entry
+```
+
+Remove launcher:
+
+```bash
+npm run uninstall:desktop-entry
+```
+
+Build Linux AppImage:
+
+```bash
+npm run package:linux
+```
+
 ## Live telemetry configuration
 
 Copy `.env.example` to `.env.local` and adjust if needed:
