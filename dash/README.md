@@ -109,10 +109,10 @@ resets).
 
 Pre-built AppImages are available in the `dist/` directory:
 
-| File | Arch | Target |
-|------|------|-------|
-| `dist/GR26 Dash-1.3.0.AppImage` | x64 | Local dev machine |
-| `dist/GR26 Dash-1.3.0-arm64.AppImage` | arm64 | Jetson (GR26) |
+| File                                  | Arch  | Target            |
+| ------------------------------------- | ----- | ----------------- |
+| `dist/GR26 Dash-1.3.0.AppImage`       | x64   | Local dev machine |
+| `dist/GR26 Dash-1.3.0-arm64.AppImage` | arm64 | Jetson (GR26)     |
 
 ### Local dev machine (x64)
 
