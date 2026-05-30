@@ -11,30 +11,30 @@ const STALE_MS = 5000;
  * Signal names this panel needs. Spread into `SUBSCRIBED_SIGNALS` in
  * App.tsx so the ingest actually sends them.
  *
- * | Requested metric   | Ingest signal                | DBC source              | Unit |
- * |--------------------|------------------------------|-------------------------|------|
- * | Battery temp       | `ecu_max_cell_temp`          | ECU_Status_1 Max_Cell_Temp | °C |
- * | GLV voltage        | `acu_12v_voltage`            | ACU_Status_2 _12v_Voltage | V  |
- * | TS voltage         | `ecu_tractive_system_voltage`| ECU_Status_2 Tractive_System_Voltage | V |
- * | TS current         | `acu_accumulator_current`    | ACU_Status_1 Accumulator_Current | A |
- * | DTI AC current lim | `placeholder_dti_ac_current_limit` | — no exact DBC match | A |
- * | Brake pressure     | `ecu_brake_pedal_travel`     | ECU_Analog_Data Brake_Pedal_Travel | % |
- * | Motor temp         | `gr_inv_motor_temp`          | Inv_Status_3 Motor_Temp | °C |
- * | Battery temp (ACU) | `acu_max_cell_temp`          | ACU_Status_2 Max_Cell_Temp | °C |
- * | Inverter temp      | `gr_inv_u_mosfet_temp`       | Inv_Status_2 U_MOSFET_Temp | °C |
- * | DC-DC current      | `acu_hv_input_current`       | ACU_Status_3 HV_Input_Current | A |
+ * | Requested metric   | Ingest signal                     | DBC source | Unit |
+ * |--------------------|-----------------------------------|------------|------|
+ * | TS voltage         | `bcu_ts_voltage`                  | —          | V    |
+ * | GLV voltage        | `cu_12v_voltage`                  | —          | V    |
+ * | AC current         | `placeholder_ac_current`          | —          | A    |
+ * | DTI AC limit       | `placeholder_dti_ac_current_limit`| —          | A    |
+ * | TS current         | `bcu_accumulator_current`         | —          | A    |
+ * | DC-DC current      | `acu_hv_input_current`            | —          | A    |
+ * | Battery temp       | `ecu_max_cell_temp`               | —          | °C   |
+ * | Motor temp         | `all_motor_temp`                  | —          | °C   |
+ * | Inverter temp      | `gr_inv_u_mosfet_temp`            | —          | °C   |
+ * | Brake pressure     | `ecu_brake_pedal`                 | —          | %    |
  */
 export const TELEMETRY_SIGNALS = [
-  'ecu_max_cell_temp',
-  'acu_12v_voltage',
-  'ecu_tractive_system_voltage',
-  'acu_accumulator_current',
+  'bcu_ts_voltage',
+  'cu_12v_voltage',
+  'placeholder_ac_current',
   'placeholder_dti_ac_current_limit',
-  'ecu_brake_pedal_travel',
-  'gr_inv_motor_temp',
-  'acu_max_cell_temp',
-  'gr_inv_u_mosfet_temp',
+  'bcu_accumulator_current',
   'acu_hv_input_current',
+  'ecu_max_cell_temp',
+  'all_motor_temp',
+  'gr_inv_u_mosfet_temp',
+  'ecu_brake_pedal',
 ] as const;
 
 // ── Tile config ─────────────────────────────────────────────────────
@@ -62,40 +62,29 @@ interface TileDef {
   decimals: number;
   /** Thresholds for background colouring. warnAt → yellow, critAt → red. */
   threshold: Threshold;
-  /** Factor to multiply the raw signal by before display. */
-  scale?: number;
 }
 
 const TILES: TileDef[] = [
   {
-    signal: 'ecu_max_cell_temp',
-    label: 'BATT TEMP',
-    unit: '°C',
-    decimals: 1,
-    threshold: { warnAt: 45, critAt: 55 },
-  },
-  {
-    signal: 'acu_12v_voltage',
-    label: 'GLV',
-    unit: 'V',
-    decimals: 1,
-    // 12V rail: green 11.5–14.5, warning below 11.5 or above 14.5, critical below 10.5 or above 15.5
-    threshold: { warnAt: 1.5, critAt: 2.5 },
-    // Deviations from 13V nominal — we compute distance from ideal
-  },
-  {
-    signal: 'ecu_tractive_system_voltage',
+    signal: 'bcu_ts_voltage',
     label: 'TS VOLT',
     unit: 'V',
     decimals: 0,
     threshold: { warnAt: 1, critAt: 1 },
   },
   {
-    signal: 'acu_accumulator_current',
-    label: 'TS CURR',
-    unit: 'A',
+    signal: 'cu_12v_voltage',
+    label: 'GLV',
+    unit: 'V',
     decimals: 1,
-    threshold: { warnAt: 100, critAt: 200 },
+    threshold: { warnAt: 1.5, critAt: 2.5 },
+  },
+  {
+    signal: 'placeholder_ac_current',
+    label: 'AC CURR',
+    unit: 'A',
+    decimals: 0,
+    threshold: { warnAt: 999, critAt: 9999 },
   },
   {
     signal: 'placeholder_dti_ac_current_limit',
@@ -105,25 +94,32 @@ const TILES: TileDef[] = [
     threshold: { warnAt: 999, critAt: 9999 },
   },
   {
-    signal: 'ecu_brake_pedal_travel',
-    label: 'BRAKE',
-    unit: '%',
-    decimals: 0,
-    threshold: { warnAt: 25, critAt: 60 },
+    signal: 'bcu_accumulator_current',
+    label: 'TS CURR',
+    unit: 'A',
+    decimals: 1,
+    threshold: { warnAt: 100, critAt: 200 },
   },
   {
-    signal: 'gr_inv_motor_temp',
+    signal: 'acu_hv_input_current',
+    label: 'DC-DC CURR',
+    unit: 'A',
+    decimals: 1,
+    threshold: { warnAt: 15, critAt: 40 },
+  },
+  {
+    signal: 'ecu_max_cell_temp',
+    label: 'BATT TEMP',
+    unit: '°C',
+    decimals: 1,
+    threshold: { warnAt: 45, critAt: 55 },
+  },
+  {
+    signal: 'all_motor_temp',
     label: 'MOTOR',
     unit: '°C',
     decimals: 1,
     threshold: { warnAt: 60, critAt: 85 },
-  },
-  {
-    signal: 'acu_max_cell_temp',
-    label: 'CELL TEMP',
-    unit: '°C',
-    decimals: 1,
-    threshold: { warnAt: 45, critAt: 55 },
   },
   {
     signal: 'gr_inv_u_mosfet_temp',
@@ -133,11 +129,11 @@ const TILES: TileDef[] = [
     threshold: { warnAt: 50, critAt: 75 },
   },
   {
-    signal: 'acu_hv_input_current',
-    label: 'DC-DC CURR',
-    unit: 'A',
-    decimals: 1,
-    threshold: { warnAt: 15, critAt: 40 },
+    signal: 'ecu_brake_pedal',
+    label: 'BRAKE',
+    unit: '%',
+    decimals: 0,
+    threshold: { warnAt: 25, critAt: 60 },
   },
 ];
 
@@ -187,9 +183,9 @@ function TelemetryTile({ def, value }: { def: TileDef; value: number | undefined
   let t: ColorTier;
   if (stale) {
     t = 'stale';
-  } else if (def.signal === 'acu_12v_voltage') {
+  } else if (def.signal === 'cu_12v_voltage') {
     t = glvTier(value);
-  } else if (def.signal === 'ecu_tractive_system_voltage') {
+  } else if (def.signal === 'bcu_ts_voltage') {
     t = tsVoltageTier(value);
   } else {
     t = tier(value, def.threshold);
@@ -199,13 +195,13 @@ function TelemetryTile({ def, value }: { def: TileDef; value: number | undefined
 
   return (
     <div
-      className={`flex min-h-[90px] flex-col items-center justify-center gap-1 rounded-2xl border-2 px-3 py-2 transition-all ${tierClasses(t)}`}
+      className={`flex h-full flex-col items-center justify-center gap-0.5 rounded-2xl border-2 px-2 py-1.5 transition-all ${tierClasses(t)}`}
     >
       <div className="text-[10px] font-bold tracking-[0.25em] uppercase opacity-70">
         {def.label}
       </div>
       <div className="flex items-baseline gap-0.5">
-        <span className="text-4xl leading-none font-black tabular-nums">{display}</span>
+        <span className="text-2xl leading-none font-black tabular-nums">{display}</span>
         {value !== undefined && <span className="text-sm font-bold opacity-60">{def.unit}</span>}
       </div>
     </div>
@@ -216,22 +212,22 @@ function TelemetryTile({ def, value }: { def: TileDef; value: number | undefined
 
 export function TelemetryPanel() {
   // Read each signal explicitly so ESLint can verify hook rules statically.
-  const v00 = useSignal('ecu_max_cell_temp');
-  const v01 = useSignal('acu_12v_voltage');
-  const v02 = useSignal('ecu_tractive_system_voltage');
-  const v03 = useSignal('acu_accumulator_current');
-  const v04 = useSignal('placeholder_dti_ac_current_limit');
-  const v05 = useSignal('ecu_brake_pedal_travel');
-  const v06 = useSignal('gr_inv_motor_temp');
-  const v07 = useSignal('acu_max_cell_temp');
+  const v00 = useSignal('bcu_ts_voltage');
+  const v01 = useSignal('cu_12v_voltage');
+  const v02 = useSignal('placeholder_ac_current');
+  const v03 = useSignal('placeholder_dti_ac_current_limit');
+  const v04 = useSignal('bcu_accumulator_current');
+  const v05 = useSignal('acu_hv_input_current');
+  const v06 = useSignal('ecu_max_cell_temp');
+  const v07 = useSignal('all_motor_temp');
   const v08 = useSignal('gr_inv_u_mosfet_temp');
-  const v09 = useSignal('acu_hv_input_current');
+  const v09 = useSignal('ecu_brake_pedal');
   const values = [v00, v01, v02, v03, v04, v05, v06, v07, v08, v09];
 
   return (
-    <div className="flex min-h-0 flex-col gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
+    <div className="flex min-h-0 flex-col gap-2 overflow-y-auto rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
       <SectionTitle>Telemetry</SectionTitle>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="auto-rows-1fr grid flex-1 grid-cols-2 gap-1.5">
         {TILES.map((def, i) => (
           <TelemetryTile key={def.signal} def={def} value={values[i]} />
         ))}

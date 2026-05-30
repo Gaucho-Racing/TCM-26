@@ -105,36 +105,54 @@ Tailwind handles all the styling — no separate CSS files beyond
 `src/renderer/src/index.css` (just the `@import "tailwindcss"` + a few global
 resets).
 
-## Deploying to the Jetson
+## Pre-built AppImages
 
-Build on the Jetson (cross-build fpm doesn't run on arm64, so the `.deb`
-target will fail — use the AppImage instead):
+Pre-built AppImages are available in the `dist/` directory:
+
+| File                                  | Arch  | Target            |
+| ------------------------------------- | ----- | ----------------- |
+| `dist/GR26 Dash-1.3.0.AppImage`       | x64   | Local dev machine |
+| `dist/GR26 Dash-1.3.0-arm64.AppImage` | arm64 | Jetson (GR26)     |
+
+### Local dev machine (x64)
+
+Run the x64 AppImage directly on your Linux desktop:
 
 ```bash
 cd dash
-npm run build:linux
+chmod +x dist/"GR26 Dash-1.3.0.AppImage"
+./dist/"GR26 Dash-1.3.0.AppImage"
 ```
 
-The arm64 AppImage lands at `dist/GR26 Dash-<ver>-arm64.AppImage`. Move it
-into place and set up the systemd service:
+By default it connects to `ws://localhost:8001/gr26/live`. To point at a
+different WebSocket or vehicle ID, set the environment at runtime:
 
 ```bash
-# Move the AppImage to the expected path
-sudo mkdir -p "/opt/GR26 Dash"
-sudo mv dist/"GR26 Dash-1.3.0-arm64.AppImage" "/opt/GR26 Dash/gr26-dash"
+VITE_GR26_WS_URL=ws://192.168.1.50:8001/gr26/live \
+  VITE_GR26_VEHICLE_ID=gr26-dev \
+  ./dist/"GR26 Dash-1.3.0.AppImage"
 ```
 
 > **FUSE note**: AppImages require FUSE to run. If missing, install it:
 > `sudo apt update && sudo apt install -y fuse`.
 > Without FUSE you can extract the contents with
-> `"/opt/GR26 Dash/gr26-dash" --appimage-extract` and run the binary inside
-> `squashfs-root/` directly, but installing FUSE is simpler.
+> `./dist/"GR26 Dash-1.3.0.AppImage" --appimage-extract` and run the binary
+> inside `squashfs-root/` directly, but installing FUSE is simpler.
+
+### Jetson (arm64)
+
+```bash
+cd dash
+chmod +x dist/"GR26 Dash-1.3.0-arm64.AppImage"
+sudo mkdir -p "/opt/GR26 Dash"
+sudo mv dist/"GR26 Dash-1.3.0-arm64.AppImage" "/opt/GR26 Dash/gr26-dash"
+```
 
 ## Deployment
 
-### Option A: systemd user service (recommended)
+### Option A: systemd user service (recommended for Jetson)
 
-Drop this unit at `~/.config/systemd/user/gr26-dash.service` on the Jetson:
+Drop this unit at `~/.config/systemd/user/gr26-dash.service`:
 
 ```ini
 [Unit]

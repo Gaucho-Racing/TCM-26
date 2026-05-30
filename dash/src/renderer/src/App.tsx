@@ -27,7 +27,7 @@ const SUBSCRIBED_SIGNALS = [
   'dash_panel_ts_off',
   'dash_panel_rtd_off',
   // Primary readouts
-  'ecu_vehicle_speed',
+  'dti_erpm',
   'ecu_accumulator_soc',
   // Motor RPM from the GR Inverter (Inverter Status 1 → 0x013).
   'inverter_motor_rpm',
@@ -74,8 +74,7 @@ function LeftColumn() {
 /** Right third: connections + debug info. */
 function RightColumn() {
   return (
-    <div className="grid min-h-0 grid-rows-[auto_1fr] gap-3">
-      {/*<DebugPanel />*/}
+    <div className="grid min-h-0 grid-rows-[1fr] gap-3">
       <TelemetryPanel />
     </div>
   );
