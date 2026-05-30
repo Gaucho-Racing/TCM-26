@@ -55,6 +55,7 @@ var nodeIDMap = map[byte]string{
 	0x1E: "brake_temp_rl",
 	0x1F: "brake_temp_rr",
 	0x30: "dgps",
+	0x67: "dti",
 }
 
 func PublishData(canID uint32, nodeID uint8, messageID uint16, targetID uint8, data []byte) {
@@ -175,11 +176,11 @@ func ListenCAN(port string) {
 			// Non-standard CAN IDs used by DTI inverters and tcm2can.
 			// These are raw extended IDs, not GRCAN-format IDs.
 			0xC16:  {nodeID: 0x2, msgID: 0xC16, targetID: 0x42},
-			0x2016: {nodeID: 0, msgID: 0x2016, targetID: 0},
-			0x2116: {nodeID: 0, msgID: 0x2116, targetID: 0},
-			0x2216: {nodeID: 0, msgID: 0x2216, targetID: 0},
-			0x2316: {nodeID: 0, msgID: 0x2316, targetID: 0},
-			0x2416: {nodeID: 0, msgID: 0x2416, targetID: 0},
+			0x2016: {nodeID: 0x67, msgID: 0x2016, targetID: 0},
+			0x2116: {nodeID: 0x67, msgID: 0x2116, targetID: 0},
+			0x2216: {nodeID: 0x67, msgID: 0x2216, targetID: 0},
+			0x2316: {nodeID: 0x67, msgID: 0x2316, targetID: 0},
+			0x2416: {nodeID: 0x67, msgID: 0x2416, targetID: 0},
 		}
 
 		var nodeID uint8

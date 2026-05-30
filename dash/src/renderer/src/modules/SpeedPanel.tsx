@@ -74,8 +74,9 @@ for (let mph = 0; mph <= MAX_SPEED; mph += 5) {
 // ── Component ───────────────────────────────────────────────────────
 
 export function SpeedPanel() {
-  const speed = useSignal('ecu_vehicle_speed');
-  const clamped = Math.max(0, Math.min(MAX_SPEED, speed));
+  const speed = useSignal('dti_erpm');
+  const mph = speed * 0.00121429;
+  const clamped = Math.max(0, Math.min(MAX_SPEED, mph));
   const frac = clamped / MAX_SPEED;
   const needleDeg = START_DEG + frac * SWEEP_DEG;
 
@@ -90,9 +91,6 @@ export function SpeedPanel() {
 
   return (
     <div className="relative flex flex-col items-center justify-center gap-1 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 px-4 py-3">
-      {/* GR brand glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(132,18,252,0.10),rgba(225,5,163,0.05)_55%,transparent_75%)]" />
-
       {/* Wrapper that scales the gauge visually, independent of column layout */}
       <div
         className="flex flex-col items-center gap-1"
@@ -113,21 +111,12 @@ export function SpeedPanel() {
             <path
               d={fgArc}
               fill="none"
-              stroke="url(#speedGrad)"
+              stroke="rgb(161 161 170)"
               strokeWidth={10}
               strokeLinecap="round"
               className="transition-all duration-150 ease-out"
             />
           )}
-
-          {/* Gradient definition */}
-          <defs>
-            <linearGradient id="speedGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stopColor="rgb(52 211 153)" />
-              <stop offset="50%" stopColor="rgb(251 191 36)" />
-              <stop offset="100%" stopColor="rgb(239 68 68)" />
-            </linearGradient>
-          </defs>
 
           {/* Minor ticks */}
           {MINOR_TICKS.map((t) => (
@@ -193,7 +182,7 @@ export function SpeedPanel() {
             dominantBaseline="central"
             className="font-black tabular-nums"
           >
-            {Math.round(speed)}
+            {Math.round(mph)}
           </text>
           <text
             x={CX}
