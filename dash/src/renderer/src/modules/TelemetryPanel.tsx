@@ -26,7 +26,7 @@ const STALE_MS = 5000;
  */
 export const TELEMETRY_SIGNALS = [
   'bcu_ts_voltage',
-  'cu_12v_voltage',
+  'bcu_12v_voltage',
   'placeholder_ac_current',
   'placeholder_dti_ac_current_limit',
   'bcu_accumulator_current',
@@ -73,7 +73,7 @@ const TILES: TileDef[] = [
     threshold: { warnAt: 1, critAt: 1 },
   },
   {
-    signal: 'cu_12v_voltage',
+    signal: 'bcu_12v_voltage',
     label: 'GLV',
     unit: 'V',
     decimals: 1,
@@ -183,7 +183,7 @@ function TelemetryTile({ def, value }: { def: TileDef; value: number | undefined
   let t: ColorTier;
   if (stale) {
     t = 'stale';
-  } else if (def.signal === 'cu_12v_voltage') {
+  } else if (def.signal === 'bcu_12v_voltage') {
     t = glvTier(value);
   } else if (def.signal === 'bcu_ts_voltage') {
     t = tsVoltageTier(value);
@@ -213,7 +213,7 @@ function TelemetryTile({ def, value }: { def: TileDef; value: number | undefined
 export function TelemetryPanel() {
   // Read each signal explicitly so ESLint can verify hook rules statically.
   const v00 = useSignal('bcu_ts_voltage');
-  const v01 = useSignal('cu_12v_voltage');
+  const v01 = useSignal('bcu_12v_voltage');
   const v02 = useSignal('placeholder_ac_current');
   const v03 = useSignal('placeholder_dti_ac_current_limit');
   const v04 = useSignal('bcu_accumulator_current');
