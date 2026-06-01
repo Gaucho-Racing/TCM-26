@@ -16,16 +16,26 @@ var CloudClient mq.Client
 
 var subscribedTopics = make(map[string]mq.MessageHandler)
 
+const (
+	connectTimeout       = 15 * time.Second
+	connectRetryInterval = 5 * time.Second
+)
+
 func InitializeMQTT() {
-	// Local broker must be reachable at startup — fatal if not.
+	// Local broker must be reachable at startup — fatal if not. Docker will
+	// restart the container, which is our retry mechanism for the local hop.
 	Client = newClient(
 		"local",
 		config.LocalMQTTHost, config.LocalMQTTPort,
 		config.LocalMQTTUser, config.LocalMQTTPassword,
 		false,
 	)
-	if token := Client.Connect(); token.Wait() && token.Error() != nil {
-		utils.SugarLogger.Fatalln("[MQ][local] Failed to connect:", token.Error())
+	token := Client.Connect()
+	if !token.WaitTimeout(connectTimeout) {
+		utils.SugarLogger.Fatalf("[MQ][local] Connect to %s:%s timed out after %s", config.LocalMQTTHost, config.LocalMQTTPort, connectTimeout)
+	}
+	if err := token.Error(); err != nil {
+		utils.SugarLogger.Fatalln("[MQ][local] Failed to connect:", err)
 	}
 
 	// Cloud broker is best-effort — retry forever in background so we don't
@@ -54,13 +64,14 @@ func newClient(label, host, port, user, password string, connectRetry bool) mq.C
 	opts.SetConnectionLostHandler(onConnectionLostFn(label))
 	opts.SetReconnectingHandler(onReconnectFn(label))
 	opts.SetMaxReconnectInterval(30 * time.Second)
+	opts.SetConnectTimeout(connectTimeout)
 	opts.SetOrderMatters(false)
 	// ConnectRetry retries the initial connection (paho's AutoReconnect only
 	// kicks in after a successful first connect, so we need this explicitly
 	// for callers that may start before their broker is available).
 	if connectRetry {
 		opts.SetConnectRetry(true)
-		opts.SetConnectRetryInterval(5 * time.Second)
+		opts.SetConnectRetryInterval(connectRetryInterval)
 	}
 	return mq.NewClient(opts)
 }
