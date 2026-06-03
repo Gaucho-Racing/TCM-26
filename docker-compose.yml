@@ -8,8 +8,9 @@ name: tcm26-dev
 #
 # This file is the dev compose only: builds from local source, runs
 # tcm-mqtt under air for hot reload, no restart policy so crashes are
-# visible in `docker compose logs`. Use it on a laptop or a dev Jetson
-# while iterating.
+# visible in `docker compose logs`. Env values are inlined (no .env
+# file) — change them here when iterating. Use it on a laptop or a dev
+# Jetson while iterating.
 #
 # The on-vehicle production stack is a SEPARATE compose in the
 # `jetson-infra` repo — it pulls pinned GHCR images, drops the air
@@ -36,22 +37,22 @@ services:
             - /var/run/jtop.sock:/var/run/jtop.sock
         environment:
             ENV: "DEV"
-            VEHICLE_ID: ${VEHICLE_ID:-GR26}
-            VEHICLE_UPLOAD_KEY: ${VEHICLE_UPLOAD_KEY:-0}
+            VEHICLE_ID: ${VEHICLE_ID}
+            VEHICLE_UPLOAD_KEY: ${VEHICLE_UPLOAD_KEY}
             DATABASE_HOST: localhost
             DATABASE_PORT: "5432"
             DATABASE_NAME: tcm26
             DATABASE_USER: postgres
-            DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
+            DATABASE_PASSWORD: password
             LOCAL_MQTT_HOST: localhost
             LOCAL_MQTT_PORT: "1883"
-            CLOUD_MQTT_HOST: ${CLOUD_MQTT_HOST:-}
-            CLOUD_MQTT_PORT: ${CLOUD_MQTT_PORT:-1883}
-            CLOUD_MQTT_USER: ${CLOUD_MQTT_USER:-}
-            CLOUD_MQTT_PASSWORD: ${CLOUD_MQTT_PASSWORD:-}
+            CLOUD_MQTT_HOST: ${CLOUD_MQTT_HOST}
+            CLOUD_MQTT_PORT: ${CLOUD_MQTT_PORT}
+            CLOUD_MQTT_USER: ${CLOUD_MQTT_USER}
+            CLOUD_MQTT_PASSWORD: ${CLOUD_MQTT_PASSWORD}
             CAN_PORT: "8000"
-            LOCAL_PUBLISH_INTERVAL: ${LOCAL_PUBLISH_INTERVAL:-20}
-            CLOUD_PUBLISH_INTERVAL: ${CLOUD_PUBLISH_INTERVAL:-100}
+            LOCAL_PUBLISH_INTERVAL: "20"
+            CLOUD_PUBLISH_INTERVAL: "100"
             PING_INTERVAL: "5000"
 
     icanspi:
@@ -93,7 +94,32 @@ services:
             DATABASE_PORT: "5432"
             DATABASE_NAME: gr26
             DATABASE_USER: postgres
-            DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
+            DATABASE_PASSWORD: password
+
+    shelter:
+        build:
+            context: ./shelter
+            dockerfile: Dockerfile.dev
+        network_mode: host
+        depends_on:
+            - db
+        volumes:
+            - ./shelter:/app
+        environment:
+            ENV: "DEV"
+            VEHICLE_ID: ${VEHICLE_ID}
+            DATABASE_HOST: localhost
+            DATABASE_PORT: "5432"
+            DATABASE_NAME: tcm26
+            DATABASE_USER: postgres
+            DATABASE_PASSWORD: password
+            S3_URI: s3://gaucho-racing/epic-shelter/tcm-26/
+            S3_REGION: us-west-2
+            AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+            AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+            BATCH_SIZE: "10000"
+            IDLE_SLEEP_S: "10"
+            ERROR_BACKOFF_S: "30"
 
     nanomq:
         image: emqx/nanomq:latest
@@ -104,7 +130,7 @@ services:
         network_mode: host
         environment:
             POSTGRES_USER: postgres
-            POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-password}
+            POSTGRES_PASSWORD: password
             POSTGRES_DB: tcm26
         volumes:
             # pg18+ writes to /var/lib/postgresql/<major>/docker; mount the parent.

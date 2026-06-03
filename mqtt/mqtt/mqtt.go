@@ -59,7 +59,7 @@ func newClient(label, host, port, user, password string, connectRetry bool) mq.C
 	opts.SetUsername(user)
 	opts.SetPassword(password)
 	opts.SetAutoReconnect(true)
-	opts.SetClientID(fmt.Sprintf("gr26-tcm-%s-%06d", label, time.Now().UnixNano()%1000000))
+	opts.SetClientID(fmt.Sprintf("%s-tcm-%s-%06d", config.VehicleID, label, time.Now().UnixNano()%1000000))
 	opts.SetOnConnectHandler(onConnectFn(label))
 	opts.SetConnectionLostHandler(onConnectionLostFn(label))
 	opts.SetReconnectingHandler(onReconnectFn(label))
