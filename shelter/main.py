@@ -14,6 +14,10 @@ from service.upload import upload
 
 def configure_logging(level: str) -> None:
     logging.basicConfig(format="%(message)s", stream=sys.stdout, level=level)
+    # boto3/botocore/urllib3 are extremely chatty at DEBUG (every event handler,
+    # every signing step). Pin them at WARNING so our DEBUG stays useful.
+    for noisy in ("boto3", "botocore", "urllib3", "s3transfer"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
     structlog.configure(
         processors=[
             structlog.processors.add_log_level,
