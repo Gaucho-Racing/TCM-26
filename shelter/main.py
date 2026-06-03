@@ -6,7 +6,7 @@ import boto3
 from loguru import logger
 
 from config.config import Config, load
-from service.runner import run_forever
+from service.runner import start_runner
 
 
 try:
@@ -45,7 +45,7 @@ def main() -> None:
         aws_secret_access_key=cfg.aws_secret_access_key,
     )
 
-    run_forever(cfg, s3)
+    start_runner(cfg, s3)
 
 
 if __name__ == "__main__":

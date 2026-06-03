@@ -65,7 +65,7 @@ def _next_trigger(pending: int, elapsed: float, cfg: Config) -> str | None:
     return None
 
 
-def run_forever(cfg: Config, s3) -> None:
+def start_runner(cfg: Config, s3) -> None:
     """Drain any existing backlog, then poll-and-batch by size or age."""
     initial_pending = pending_count(cfg.pg_uri)
     if initial_pending > 0:
