@@ -96,7 +96,7 @@ def start_runner(cfg: Config, s3, status: ShelterStatus) -> None:
             trigger = _next_trigger(pending, elapsed, cfg)
             if trigger is None:
                 status.set(state=State.IDLE)
-                logger.debug(
+                logger.info(
                     f"waiting: pending={pending}/{cfg.batch_size} "
                     f"elapsed={elapsed}s/{cfg.max_batch_age}s"
                 )
