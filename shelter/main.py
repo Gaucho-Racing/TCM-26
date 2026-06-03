@@ -9,7 +9,7 @@ import ulid
 from loguru import logger
 
 from config.config import Config, load
-from database.db import claim_batch, rollback_batch
+from database.db import claim_batch, pending_count, rollback_batch
 from service.upload import upload
 
 
@@ -38,7 +38,8 @@ def main() -> None:
     configure_logging(cfg.log_level)
     logger.info(
         f"shelter starting (vehicle_id={cfg.vehicle_id}, batch_size={cfg.batch_size}, "
-        f"s3_uri={cfg.s3_uri}, idle_sleep_s={cfg.idle_sleep_s})"
+        f"max_batch_age_s={cfg.max_batch_age_s}, s3_uri={cfg.s3_uri}, "
+        f"idle_sleep_s={cfg.idle_sleep_s})"
     )
 
     s3 = boto3.client(
@@ -48,24 +49,46 @@ def main() -> None:
         aws_secret_access_key=cfg.aws_secret_access_key,
     )
 
-    last_batch_done = time.monotonic()
+    # Make startup behave as if max_batch_age_s already elapsed, so we drain
+    # any backlog immediately on first iteration instead of waiting a full
+    # max_batch_age_s window.
+    last_batch_done = time.monotonic() - cfg.max_batch_age_s
     while True:
-        idle_s = round(time.monotonic() - last_batch_done, 3)
+        elapsed = round(time.monotonic() - last_batch_done, 3)
+        pending = pending_count(cfg.pg_uri, cfg.batch_size)
+        size_ready = pending >= cfg.batch_size
+        age_ready = pending > 0 and elapsed >= cfg.max_batch_age_s
+        if not (size_ready or age_ready):
+            logger.debug(
+                f"waiting: pending={pending}/{cfg.batch_size} elapsed={elapsed}s/{cfg.max_batch_age_s}s"
+            )
+            time.sleep(cfg.idle_sleep_s)
+            continue
+
         claim_id = int(time.time() * 1000)
         batch_id = ulid.make()
+        trigger = "size" if size_ready else "age"
         try:
-            logger.debug(f"[{batch_id}] claiming batch (limit={cfg.batch_size}, idle_s={idle_s})")
+            logger.debug(
+                f"[{batch_id}] claiming batch "
+                f"(trigger={trigger}, pending={pending}, elapsed={elapsed}s)"
+            )
             t0 = time.monotonic()
             df = claim_batch(cfg.pg_uri, claim_id, cfg.batch_size)
             claim_s = round(time.monotonic() - t0, 3)
 
             if df.is_empty():
-                logger.debug(f"[{batch_id}] no unsynced rows (claim_s={claim_s}), idling {cfg.idle_sleep_s}s")
-                time.sleep(cfg.idle_sleep_s)
+                # Pending was > 0 a moment ago but someone else (or SKIP LOCKED)
+                # cleared it. Reset the age clock and loop.
+                logger.debug(f"[{batch_id}] race: nothing claimed (claim_s={claim_s})")
+                last_batch_done = time.monotonic()
                 continue
 
             est_mb = round(df.estimated_size() / 1_048_576, 2)
-            logger.info(f"[{batch_id}] claimed {len(df)} rows in {claim_s}s ({est_mb} MB, idle_s={idle_s})")
+            logger.info(
+                f"[{batch_id}] claimed {len(df)} rows in {claim_s}s "
+                f"({est_mb} MB, trigger={trigger}, elapsed={elapsed}s)"
+            )
 
             t1 = time.monotonic()
             key = upload(df, cfg, batch_id)

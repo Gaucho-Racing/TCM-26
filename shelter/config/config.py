@@ -12,6 +12,7 @@ class Config:
     aws_access_key_id: str
     aws_secret_access_key: str
     batch_size: int
+    max_batch_age_s: float
     idle_sleep_s: float
     error_backoff_s: float
     log_level: str
@@ -42,6 +43,7 @@ def load() -> Config:
         aws_access_key_id=_env("AWS_ACCESS_KEY_ID"),
         aws_secret_access_key=_env("AWS_SECRET_ACCESS_KEY"),
         batch_size=int(_env("BATCH_SIZE", "100000")),
+        max_batch_age_s=float(_env("MAX_BATCH_AGE_S", "300")),
         idle_sleep_s=float(_env("IDLE_SLEEP_S", "30")),
         error_backoff_s=float(_env("ERROR_BACKOFF_S", "60")),
         log_level=_ENV_LOG_LEVEL.get(env.upper(), "INFO"),
