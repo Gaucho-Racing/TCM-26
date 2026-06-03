@@ -9,4 +9,5 @@ dependencies = [
     "adbc-driver-manager>=1.0",
     "pyarrow>=17",
     "structlog>=24.4",
+    "gr-ulid>=1.1",
 ]

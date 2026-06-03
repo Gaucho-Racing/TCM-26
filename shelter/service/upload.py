@@ -1,17 +1,19 @@
 from datetime import datetime, UTC
 
 import polars as pl
+import ulid
 
 from config.config import Config
 
 
-def upload(df: pl.DataFrame, cfg: Config, batch_id: int) -> str:
+def upload(df: pl.DataFrame, cfg: Config, batch_ulid: ulid.ULID) -> str:
     now = datetime.now(UTC)
     prefix = cfg.s3_uri.rstrip("/")
+    folder = batch_ulid.prefixed("batch")
     key = (
         f"{prefix}/vehicle_id={cfg.vehicle_id}"
         f"/date={now:%Y-%m-%d}/hour={now:%H}"
-        f"/batch={batch_id}.parquet"
+        f"/{folder}/data.parquet"
     )
     df.write_parquet(
         key,

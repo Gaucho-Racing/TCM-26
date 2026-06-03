@@ -3,6 +3,7 @@ import sys
 import time
 
 import structlog
+import ulid
 
 from config.config import load
 from database.db import claim_batch, rollback_batch
@@ -28,15 +29,16 @@ def main() -> None:
 
     while True:
         batch_id = int(time.time() * 1000)
+        batch_ulid = ulid.make()
         try:
             df = claim_batch(cfg.pg_uri, batch_id, cfg.batch_size)
             if df.is_empty():
                 time.sleep(cfg.idle_sleep_s)
                 continue
-            key = upload(df, cfg, batch_id)
-            log.info("uploaded", rows=len(df), key=key, batch_id=batch_id)
+            key = upload(df, cfg, batch_ulid)
+            log.info("uploaded", rows=len(df), key=key, batch_id=batch_id, batch_ulid=str(batch_ulid))
         except Exception as e:
-            log.error("batch failed, rolling back", batch_id=batch_id, error=str(e))
+            log.error("batch failed, rolling back", batch_id=batch_id, batch_ulid=str(batch_ulid), error=str(e))
             try:
                 affected = rollback_batch(cfg.pg_uri, batch_id)
                 log.info("rolled back", batch_id=batch_id, rows=affected)
