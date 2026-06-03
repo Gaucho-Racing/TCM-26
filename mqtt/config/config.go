@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	cmap "github.com/orcaman/concurrent-map/v2"
@@ -32,6 +33,28 @@ var CloudMQTTUser = os.Getenv("CLOUD_MQTT_USER")
 var CloudMQTTPassword = os.Getenv("CLOUD_MQTT_PASSWORD")
 
 var CANPort = os.Getenv("CAN_PORT")
+
+// VirtualCANPorts is a comma-separated list of additional UDP ports to
+// listen on for synthetic CAN frames produced by on-tcm software services
+// (e.g. shelter). Each port behaves exactly like CANPort downstream —
+// same parse, same PublishData dispatch, same MQTT topics — but skips the
+// SPI byte-swap since these senders aren't going through the STM32 path.
+var VirtualCANPorts = parsePortList(os.Getenv("VIRTUAL_CAN_PORTS"))
+
+func parsePortList(s string) []string {
+	if s == "" {
+		return nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
 
 // Per-CAN-ID publish throttles, in milliseconds. We track local and cloud
 // independently so the on-vehicle dash can run high-rate while the cellular

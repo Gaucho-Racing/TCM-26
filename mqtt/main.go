@@ -23,5 +23,10 @@ func main() {
 	service.InitializeResourceQuery()
 	service.InitializeTCMStatus()
 
-	service.ListenCAN(config.CANPort)
+	// Virtual CAN listeners run in the background; the real icanspi
+	// listener blocks main below.
+	for _, port := range config.VirtualCANPorts {
+		go service.ListenCAN(port, true)
+	}
+	service.ListenCAN(config.CANPort, false)
 }
