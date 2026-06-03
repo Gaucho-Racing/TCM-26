@@ -12,7 +12,7 @@ def upload(df: pl.DataFrame, cfg: Config, batch_id: ulid.ULID) -> str:
         compression="zstd",
         compression_level=3,
         statistics=True,
-        row_group_size=100_000,
+        row_group_size=500_000,
         storage_options={
             "aws_region": cfg.s3_region,
             "aws_access_key_id": cfg.aws_access_key_id,
