@@ -60,7 +60,7 @@ def _next_trigger(pending: int, elapsed: float, cfg: Config) -> str | None:
     """Return 'size' / 'age' if a claim should fire now, else None."""
     if pending >= cfg.batch_size:
         return "size"
-    if pending > 0 and elapsed >= cfg.max_batch_age_s:
+    if pending > 0 and elapsed >= cfg.max_batch_age:
         return "age"
     return None
 
@@ -81,16 +81,16 @@ def run_forever(cfg: Config, s3) -> None:
             if trigger is None:
                 logger.debug(
                     f"waiting: pending={pending}/{cfg.batch_size} "
-                    f"elapsed={elapsed}s/{cfg.max_batch_age_s}s"
+                    f"elapsed={elapsed}s/{cfg.max_batch_age}s"
                 )
-                time.sleep(cfg.idle_sleep_s)
+                time.sleep(cfg.idle_sleep)
                 continue
 
             ok = run_batch(cfg, s3, trigger=trigger)
             if ok:
                 last_batch_done = time.monotonic()
             else:
-                time.sleep(cfg.error_backoff_s)
+                time.sleep(cfg.error_backoff)
         except Exception as e:
             logger.error(f"loop iteration failed: {e}")
-            time.sleep(cfg.error_backoff_s)
+            time.sleep(cfg.error_backoff)

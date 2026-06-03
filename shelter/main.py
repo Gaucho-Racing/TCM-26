@@ -34,8 +34,8 @@ def main() -> None:
     configure_logging(cfg.log_level)
     logger.info(
         f"shelter starting (vehicle_id={cfg.vehicle_id}, batch_size={cfg.batch_size}, "
-        f"max_batch_age_s={cfg.max_batch_age_s}, s3_uri={cfg.s3_uri}, "
-        f"idle_sleep_s={cfg.idle_sleep_s})"
+        f"max_batch_age={cfg.max_batch_age}, s3_uri={cfg.s3_uri}, "
+        f"idle_sleep={cfg.idle_sleep})"
     )
 
     s3 = boto3.client(
