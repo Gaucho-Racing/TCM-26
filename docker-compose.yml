@@ -38,7 +38,7 @@ services:
         environment:
             ENV: "DEV"
             VEHICLE_ID: ${VEHICLE_ID}
-            VEHICLE_UPLOAD_KEY: "0"
+            VEHICLE_UPLOAD_KEY: ${VEHICLE_UPLOAD_KEY}
             DATABASE_HOST: localhost
             DATABASE_PORT: "5432"
             DATABASE_NAME: tcm26
