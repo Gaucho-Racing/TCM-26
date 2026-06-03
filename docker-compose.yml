@@ -46,10 +46,10 @@ services:
             DATABASE_PASSWORD: password
             LOCAL_MQTT_HOST: localhost
             LOCAL_MQTT_PORT: "1883"
-            CLOUD_MQTT_HOST: ""
-            CLOUD_MQTT_PORT: "1883"
-            CLOUD_MQTT_USER: ""
-            CLOUD_MQTT_PASSWORD: ""
+            CLOUD_MQTT_HOST: ${CLOUD_MQTT_HOST}
+            CLOUD_MQTT_PORT: ${CLOUD_MQTT_PORT}
+            CLOUD_MQTT_USER: ${CLOUD_MQTT_USER}
+            CLOUD_MQTT_PASSWORD: ${CLOUD_MQTT_PASSWORD}
             CAN_PORT: "8000"
             LOCAL_PUBLISH_INTERVAL: "20"
             CLOUD_PUBLISH_INTERVAL: "100"
