@@ -35,13 +35,13 @@ def main() -> None:
     )
 
     while True:
-        batch_id = int(time.time() * 1000)
-        batch_ulid = ulid.make()
-        ctx = log.bind(batch_id=batch_id, batch_ulid=str(batch_ulid))
+        claim_id = int(time.time() * 1000)
+        batch_id = ulid.make()
+        ctx = log.bind(claim_id=claim_id, batch_id=str(batch_id))
         try:
             ctx.debug("claiming batch", limit=cfg.batch_size)
             t0 = time.monotonic()
-            df = claim_batch(cfg.pg_uri, batch_id, cfg.batch_size)
+            df = claim_batch(cfg.pg_uri, claim_id, cfg.batch_size)
             claim_s = round(time.monotonic() - t0, 3)
 
             if df.is_empty():
@@ -53,13 +53,13 @@ def main() -> None:
             ctx.info("claimed", rows=len(df), claim_s=claim_s, est_mb=est_mb)
 
             t1 = time.monotonic()
-            key = upload(df, cfg, batch_ulid)
+            key = upload(df, cfg, batch_id)
             upload_s = round(time.monotonic() - t1, 3)
             ctx.info("uploaded", rows=len(df), key=key, upload_s=upload_s, total_s=round(claim_s + upload_s, 3))
         except Exception as e:
             ctx.error("batch failed, rolling back", error=str(e))
             try:
-                affected = rollback_batch(cfg.pg_uri, batch_id)
+                affected = rollback_batch(cfg.pg_uri, claim_id)
                 ctx.info("rolled back", rows=affected)
             except Exception as roll_err:
                 ctx.error("rollback failed", error=str(roll_err))

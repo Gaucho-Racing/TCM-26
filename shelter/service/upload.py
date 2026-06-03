@@ -4,9 +4,9 @@ import ulid
 from config.config import Config
 
 
-def upload(df: pl.DataFrame, cfg: Config, batch_ulid: ulid.ULID) -> str:
+def upload(df: pl.DataFrame, cfg: Config, batch_id: ulid.ULID) -> str:
     prefix = cfg.s3_uri.rstrip("/")
-    key = f"{prefix}/{batch_ulid.prefixed('batch')}.parquet"
+    key = f"{prefix}/{batch_id.prefixed('batch')}.parquet"
     df.write_parquet(
         key,
         compression="zstd",
