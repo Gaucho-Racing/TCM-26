@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from urllib.parse import quote
 
 
 @dataclass(frozen=True)
@@ -34,8 +35,13 @@ def load() -> Config:
     env = _env("ENV", "PROD")
     return Config(
         env=env,
+        # URL-encode user/password since either may contain reserved URI
+        # chars (e.g. '@' in our prod password). Without this, the first
+        # '@' in the password gets parsed as the host delimiter and adbc
+        # tries to resolve garbage as a hostname.
         pg_uri=(
-            f"postgresql://{_env('DATABASE_USER')}:{_env('DATABASE_PASSWORD')}"
+            f"postgresql://{quote(_env('DATABASE_USER'), safe='')}"
+            f":{quote(_env('DATABASE_PASSWORD'), safe='')}"
             f"@{_env('DATABASE_HOST')}:{_env('DATABASE_PORT', '5432')}"
             f"/{_env('DATABASE_NAME')}"
         ),
