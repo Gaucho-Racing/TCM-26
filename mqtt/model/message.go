@@ -1,7 +1,7 @@
 package model
 
-type Gr25Message struct {
-	Timestamp  int    `json:"timestamp"`
+type Gr26Message struct {
+	Timestamp  int    `json:"timestamp" gorm:"index:gr26_message_unsynced_ts,where:synced = 0"`
 	VehicleID  string `json:"vehicle_id"`
 	Topic      string `json:"topic"`
 	Data       []byte `json:"data" gorm:"type:bytea"` // PostgreSQL uses BYTEA for binary data
@@ -10,6 +10,6 @@ type Gr25Message struct {
 	TargetNode string `json:"target_node"`
 }
 
-func (Gr25Message) TableName() string {
-	return "gr25_message"
+func (Gr26Message) TableName() string {
+	return "gr26_message"
 }

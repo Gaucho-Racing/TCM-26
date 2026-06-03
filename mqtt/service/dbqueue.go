@@ -9,7 +9,7 @@ import (
 )
 
 type DBQueue struct {
-	messages  chan model.Gr25Message
+	messages  chan model.Gr26Message
 	batchSize int
 	flushTime time.Duration
 	mu        sync.RWMutex
@@ -21,7 +21,7 @@ var dbQueue *DBQueue
 
 func InitDBQueue() {
 	dbQueue = &DBQueue{
-		messages:  make(chan model.Gr25Message, 1000000), // Buffer for 1M messages
+		messages:  make(chan model.Gr26Message, 1000000), // Buffer for 1M messages
 		batchSize: 10000,                                 // Batch size of 10k messages
 		flushTime: 1000 * time.Millisecond,               // Flush every 1000ms
 	}
@@ -41,7 +41,7 @@ func QueueDBWrite(timestamp int, vehicleID, topic string, data []byte, sourceNod
 		return
 	}
 
-	msg := model.Gr25Message{
+	msg := model.Gr26Message{
 		Timestamp:  timestamp,
 		VehicleID:  vehicleID,
 		Topic:      topic,
@@ -63,7 +63,7 @@ func QueueDBWrite(timestamp int, vehicleID, topic string, data []byte, sourceNod
 func (q *DBQueue) worker() {
 	defer q.wg.Done()
 
-	batch := make([]model.Gr25Message, 0, q.batchSize)
+	batch := make([]model.Gr26Message, 0, q.batchSize)
 	ticker := time.NewTicker(q.flushTime)
 	defer ticker.Stop()
 
@@ -96,7 +96,7 @@ func (q *DBQueue) worker() {
 	}
 }
 
-func (q *DBQueue) writeBatch(batch []model.Gr25Message) {
+func (q *DBQueue) writeBatch(batch []model.Gr26Message) {
 	if len(batch) == 0 {
 		return
 	}
