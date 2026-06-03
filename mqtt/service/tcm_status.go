@@ -8,28 +8,44 @@ import (
 	"mqtt/model"
 	"mqtt/mqtt"
 	"mqtt/utils"
+	"net"
 	"time"
 )
 
-// Bit positions in TCM Status status_bits byte (matches GRCAN.CANdo).
+// Bit positions in TCM Status status_bits byte.
 const (
-	tcmStatusConnectionOK = 1 << 0 // generic connection bit
-	tcmStatusMQTTOK       = 1 << 1 // cloud broker reachable
-	tcmStatusEpicShelter  = 1 << 2 // unused for now
-	tcmStatusCamera       = 1 << 3 // unused for now
+	tcmStatusConnectionOK = 1 << 0 // generic internet (DNS reachable)
+	tcmStatusMQTTOK       = 1 << 1 // cloud broker connected
+	tcmStatusMapacheOK    = 1 << 2 // cloud Mapache responding (fresh pong)
 )
 
-// cloudPongFreshness is the freshness window for the most recent pong
-// before we flip tcm_connection_ok off. Derived from the configured
+// internetCheckTarget is a TCP target we dial to verify general internet
+// connectivity. 8.8.8.8:53 is Google Public DNS — well-known, low-latency,
+// and reachable via TCP from anywhere with an open egress path. We don't
+// actually do DNS — just opening the socket is enough to know the LTE/wifi
+// link is up and routing to the public internet.
+const internetCheckTarget = "8.8.8.8:53"
+
+// mapachePongFreshness is the freshness window for the most recent pong
+// before we flip tcm_mapache_ok off. Derived from the configured
 // PING_INTERVAL: 2× interval allows a single missed ping, +5s slack
-// covers jitter and round-trip variance. So at the default 5s ping
-// cadence this resolves to 15s.
-func cloudPongFreshness() time.Duration {
+// covers jitter and round-trip variance. At the default 5s ping cadence
+// this resolves to 15s.
+func mapachePongFreshness() time.Duration {
 	return config.PingInterval*2 + 5*time.Second
 }
 
-// InitializeTCMStatus publishes a TCM Status (0x029) message every 5s
-// summarizing cloud broker connectivity for the dash.
+func hasInternet() bool {
+	conn, err := net.DialTimeout("tcp", internetCheckTarget, 2*time.Second)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
+}
+
+// InitializeTCMStatus publishes a TCM Status (0x200) message every 5s
+// summarizing on-vehicle connectivity for the dash and cloud.
 func InitializeTCMStatus() {
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
@@ -54,29 +70,30 @@ func publishTCMStatus() {
 		latencyMs = uint16(ms)
 	}
 
-	pongAgeOK := false
+	mapacheOK := false
 	if lastPing.Ping > 0 {
 		pongAge := time.Now().UnixMicro() - int64(lastPing.Ping)
-		pongAgeOK = pongAge >= 0 && pongAge < cloudPongFreshness().Microseconds()
+		mapacheOK = pongAge >= 0 && pongAge < mapachePongFreshness().Microseconds()
 	}
 
 	var statusBits byte
+	if hasInternet() {
+		statusBits |= tcmStatusConnectionOK
+	}
 	if mqtt.CloudClient != nil && mqtt.CloudClient.IsConnected() {
 		statusBits |= tcmStatusMQTTOK
 	}
-	if pongAgeOK {
-		statusBits |= tcmStatusConnectionOK
+	if mapacheOK {
+		statusBits |= tcmStatusMapacheOK
 	}
 
-	// TCM Status payload layout (8 bytes per GRCAN.CANdo):
+	// TCM Status payload layout (8 bytes):
 	//   [0]    status_bits
 	//   [1:3]  mapache_ping (u16, ms, little-endian)
-	//   [3:7]  cache_size   (u32, little-endian, unused for now)
-	//   [7]    reserved
+	//   [3:8]  reserved
 	dataPayload := make([]byte, 8)
 	dataPayload[0] = statusBits
 	binary.LittleEndian.PutUint16(dataPayload[1:3], latencyMs)
-	binary.LittleEndian.PutUint32(dataPayload[3:7], 0)
 
 	micros := time.Now().UnixMicro()
 	tsBytes := make([]byte, 8)
@@ -87,7 +104,7 @@ func publishTCMStatus() {
 	payload := append(tsBytes, keyBytes...)
 	payload = append(payload, dataPayload...)
 
-	topic := fmt.Sprintf("gr26/%s/tcm/0x029", config.VehicleID)
+	topic := fmt.Sprintf("gr26/%s/tcm/0x200", config.VehicleID)
 	mqtt.Publish(topic, 0, false, payload)
 	utils.SugarLogger.Debugf("[TCM] published status: bits=%08b latency=%dms", statusBits, latencyMs)
 }
