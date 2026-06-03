@@ -25,14 +25,7 @@ WITH rolled AS (
 SELECT COUNT(*) FROM rolled;
 """
 
-# Count unsynced rows, but walk no more than $1 index entries. The partial
-# index on (timestamp) WHERE synced = 0 makes this O(LIMIT) — we only need
-# to know whether the queue has reached the batch threshold, not its true depth.
-PENDING_COUNT_SQL = """
-SELECT COUNT(*) FROM (
-    SELECT 1 FROM gr26_message WHERE synced = 0 LIMIT $1
-) sub;
-"""
+PENDING_COUNT_SQL = "SELECT COUNT(*) FROM gr26_message WHERE synced = 0;"
 
 
 def claim_batch(conn_uri: str, claim_id: int, batch_size: int) -> pl.DataFrame:
@@ -53,9 +46,9 @@ def rollback_batch(conn_uri: str, claim_id: int) -> int:
         return int(count)
 
 
-def pending_count(conn_uri: str, limit: int) -> int:
+def pending_count(conn_uri: str) -> int:
     with adbc.connect(conn_uri) as conn:
         cur = conn.cursor()
-        cur.execute(PENDING_COUNT_SQL, (limit,))
+        cur.execute(PENDING_COUNT_SQL)
         (count,) = cur.fetchone()
         return int(count)

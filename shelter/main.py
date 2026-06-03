@@ -55,7 +55,7 @@ def main() -> None:
     last_batch_done = time.monotonic() - cfg.max_batch_age_s
     while True:
         elapsed = round(time.monotonic() - last_batch_done, 3)
-        pending = pending_count(cfg.pg_uri, cfg.batch_size)
+        pending = pending_count(cfg.pg_uri)
         size_ready = pending >= cfg.batch_size
         age_ready = pending > 0 and elapsed >= cfg.max_batch_age_s
         if not (size_ready or age_ready):
