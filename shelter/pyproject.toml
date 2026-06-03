@@ -8,7 +8,7 @@ dependencies = [
     "adbc-driver-postgresql>=1.0",
     "adbc-driver-manager>=1.0",
     "pyarrow>=17",
-    "structlog>=24.4",
+    "loguru>=0.7",
     "gr-ulid>=1.1",
     "boto3>=1.35",
 ]
