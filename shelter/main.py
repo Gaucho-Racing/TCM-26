@@ -6,7 +6,9 @@ import boto3
 from loguru import logger
 
 from config.config import Config, load
+from service.heartbeat import start_heartbeat
 from service.runner import start_runner
+from service.state import ShelterStatus
 
 
 try:
@@ -45,7 +47,9 @@ def main() -> None:
         aws_secret_access_key=cfg.aws_secret_access_key,
     )
 
-    start_runner(cfg, s3)
+    status = ShelterStatus()
+    start_heartbeat(cfg, status)
+    start_runner(cfg, s3, status)
 
 
 if __name__ == "__main__":
