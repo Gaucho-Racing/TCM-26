@@ -114,7 +114,6 @@ services:
             MAX_BATCH_AGE: "600"
             IDLE_SLEEP: "10"
             ERROR_BACKOFF: "30"
-            VIRTUAL_CAN_HOST: localhost
             VIRTUAL_CAN_PORT: "8100"
             HEARTBEAT_INTERVAL: "5"
 

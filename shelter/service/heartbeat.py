@@ -37,10 +37,11 @@ def start_heartbeat(cfg: Config, status: ShelterStatus) -> None:
     cfg.heartbeat_interval seconds to the configured virtual CAN endpoint."""
     def run() -> None:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        addr = (cfg.virtual_can_host, cfg.virtual_can_port)
+        # Always loopback — shelter and tcm-mqtt share the host network namespace.
+        addr = ("127.0.0.1", cfg.virtual_can_port)
         logger.info(
             f"heartbeat thread started: interval={cfg.heartbeat_interval}s -> "
-            f"{cfg.virtual_can_host}:{cfg.virtual_can_port}"
+            f"udp/{cfg.virtual_can_port}"
         )
         while True:
             state, pending = status.snapshot()
