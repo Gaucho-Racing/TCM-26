@@ -1,0 +1,12 @@
+[project]
+name = "shelter"
+version = "0.1.0"
+description = "On-car parquet uploader for TCM-26 (Epic Shelter)"
+requires-python = ">=3.12"
+dependencies = [
+    "polars>=1.41",
+    "adbc-driver-postgresql>=1.0",
+    "adbc-driver-manager>=1.0",
+    "pyarrow>=17",
+    "structlog>=24.4",
+]
