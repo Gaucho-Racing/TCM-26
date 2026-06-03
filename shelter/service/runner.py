@@ -6,6 +6,7 @@ from loguru import logger
 
 from config.config import Config
 from database.db import claim_batch, pending_count, rollback_batch
+from service.heartbeat import send_batch
 from service.state import ShelterStatus, State
 from service.upload import upload
 
@@ -48,6 +49,15 @@ def run_batch(cfg: Config, s3, trigger: str, status: ShelterStatus) -> bool:
             f"[{batch_id}] uploaded -> {key} "
             f"({compressed_mb} MB compressed, {ratio}x ratio, {upload_mbps} MB/s, "
             f"upload_s={upload_s}, total_s={round(claim_s + upload_s, 3)})"
+        )
+        send_batch(
+            cfg,
+            rows=len(df),
+            compressed_bytes=head["ContentLength"],
+            upload_ms=int(upload_s * 1000),
+            claim_ms=int(claim_s * 1000),
+            ratio_x100=int(ratio * 100),
+            trigger=trigger,
         )
         return True
     except Exception as e:
