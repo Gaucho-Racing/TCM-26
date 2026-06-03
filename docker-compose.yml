@@ -99,6 +99,7 @@ services:
     shelter:
         build:
             context: ./shelter
+            dockerfile: Dockerfile.dev
         network_mode: host
         depends_on:
             - db
@@ -112,7 +113,7 @@ services:
             DATABASE_NAME: tcm26
             DATABASE_USER: postgres
             DATABASE_PASSWORD: password
-            S3_BUCKET: gr-shelter-dev
+            S3_URI: s3://gaucho-racing/epic-shelter/tcm-26/
             S3_REGION: us-west-2
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}

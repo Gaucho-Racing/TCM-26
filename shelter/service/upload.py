@@ -7,8 +7,9 @@ from config.config import Config
 
 def upload(df: pl.DataFrame, cfg: Config, batch_id: int) -> str:
     now = datetime.now(UTC)
+    prefix = cfg.s3_uri.rstrip("/")
     key = (
-        f"s3://{cfg.s3_bucket}/vehicle_id={cfg.vehicle_id}"
+        f"{prefix}/vehicle_id={cfg.vehicle_id}"
         f"/date={now:%Y-%m-%d}/hour={now:%H}"
         f"/batch={batch_id}.parquet"
     )

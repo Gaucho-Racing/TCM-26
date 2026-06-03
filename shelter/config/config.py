@@ -7,7 +7,7 @@ class Config:
     env: str
     pg_uri: str
     vehicle_id: str
-    s3_bucket: str
+    s3_uri: str
     s3_region: str
     aws_access_key_id: str
     aws_secret_access_key: str
@@ -37,7 +37,7 @@ def load() -> Config:
             f"/{_env('DATABASE_NAME')}"
         ),
         vehicle_id=_env("VEHICLE_ID"),
-        s3_bucket=_env("S3_BUCKET"),
+        s3_uri=_env("S3_URI"),
         s3_region=_env("S3_REGION", "us-west-2"),
         aws_access_key_id=_env("AWS_ACCESS_KEY_ID"),
         aws_secret_access_key=_env("AWS_SECRET_ACCESS_KEY"),
