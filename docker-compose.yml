@@ -119,7 +119,6 @@ services:
             BATCH_SIZE: "10000"
             IDLE_SLEEP_S: "10"
             ERROR_BACKOFF_S: "30"
-            LOG_LEVEL: INFO
 
     nanomq:
         image: emqx/nanomq:latest

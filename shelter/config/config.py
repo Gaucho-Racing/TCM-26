@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Config:
+    env: str
     pg_uri: str
     vehicle_id: str
     s3_bucket: str
@@ -16,6 +17,9 @@ class Config:
     log_level: str
 
 
+_ENV_LOG_LEVEL = {"DEV": "DEBUG", "PROD": "INFO"}
+
+
 def _env(name: str, default: str | None = None) -> str:
     val = os.environ.get(name, default)
     if val is None:
@@ -24,7 +28,9 @@ def _env(name: str, default: str | None = None) -> str:
 
 
 def load() -> Config:
+    env = _env("ENV", "PROD")
     return Config(
+        env=env,
         pg_uri=(
             f"postgresql://{_env('DATABASE_USER')}:{_env('DATABASE_PASSWORD')}"
             f"@{_env('DATABASE_HOST')}:{_env('DATABASE_PORT', '5432')}"
@@ -38,5 +44,5 @@ def load() -> Config:
         batch_size=int(_env("BATCH_SIZE", "100000")),
         idle_sleep_s=float(_env("IDLE_SLEEP_S", "30")),
         error_backoff_s=float(_env("ERROR_BACKOFF_S", "60")),
-        log_level=_env("LOG_LEVEL", "INFO"),
+        log_level=_ENV_LOG_LEVEL.get(env.upper(), "INFO"),
     )
