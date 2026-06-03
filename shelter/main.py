@@ -25,25 +25,44 @@ def main() -> None:
     cfg = load()
     configure_logging(cfg.log_level)
     log = structlog.get_logger()
-    log.info("shelter starting", vehicle_id=cfg.vehicle_id, batch_size=cfg.batch_size)
+    log.info(
+        "shelter starting",
+        env=cfg.env,
+        vehicle_id=cfg.vehicle_id,
+        batch_size=cfg.batch_size,
+        s3_uri=cfg.s3_uri,
+        idle_sleep_s=cfg.idle_sleep_s,
+    )
 
     while True:
         batch_id = int(time.time() * 1000)
         batch_ulid = ulid.make()
+        ctx = log.bind(batch_id=batch_id, batch_ulid=str(batch_ulid))
         try:
+            ctx.debug("claiming batch", limit=cfg.batch_size)
+            t0 = time.monotonic()
             df = claim_batch(cfg.pg_uri, batch_id, cfg.batch_size)
+            claim_s = round(time.monotonic() - t0, 3)
+
             if df.is_empty():
+                ctx.debug("no unsynced rows, idling", claim_s=claim_s)
                 time.sleep(cfg.idle_sleep_s)
                 continue
+
+            est_mb = round(df.estimated_size() / 1_048_576, 2)
+            ctx.info("claimed", rows=len(df), claim_s=claim_s, est_mb=est_mb)
+
+            t1 = time.monotonic()
             key = upload(df, cfg, batch_ulid)
-            log.info("uploaded", rows=len(df), key=key, batch_id=batch_id, batch_ulid=str(batch_ulid))
+            upload_s = round(time.monotonic() - t1, 3)
+            ctx.info("uploaded", rows=len(df), key=key, upload_s=upload_s, total_s=round(claim_s + upload_s, 3))
         except Exception as e:
-            log.error("batch failed, rolling back", batch_id=batch_id, batch_ulid=str(batch_ulid), error=str(e))
+            ctx.error("batch failed, rolling back", error=str(e))
             try:
                 affected = rollback_batch(cfg.pg_uri, batch_id)
-                log.info("rolled back", batch_id=batch_id, rows=affected)
+                ctx.info("rolled back", rows=affected)
             except Exception as roll_err:
-                log.error("rollback failed", batch_id=batch_id, error=str(roll_err))
+                ctx.error("rollback failed", error=str(roll_err))
             time.sleep(cfg.error_backoff_s)
 
 

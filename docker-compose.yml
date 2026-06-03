@@ -109,7 +109,7 @@ services:
             S3_REGION: us-west-2
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-            BATCH_SIZE: "10000"
+            BATCH_SIZE: "1000000"
             IDLE_SLEEP_S: "10"
             ERROR_BACKOFF_S: "30"
 
