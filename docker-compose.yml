@@ -1,4 +1,4 @@
-name: tcm26
+name: tcm26-dev
 
 # All services run on host networking. Simpler than maintaining port maps
 # and a custom bridge — every service talks to peers via localhost on the
