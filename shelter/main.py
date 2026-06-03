@@ -1,15 +1,28 @@
 import logging
 import sys
 import time
+from importlib.metadata import PackageNotFoundError, version
 from urllib.parse import urlparse
 
 import boto3
 import structlog
 import ulid
 
-from config.config import load
+from config.config import Config, load
 from database.db import claim_batch, rollback_batch
 from service.upload import upload
+
+
+try:
+    VERSION = version("shelter")
+except PackageNotFoundError:
+    VERSION = "dev"
+
+
+def print_banner(cfg: Config) -> None:
+    print("\033[1;95mEPIC SHELTER\033[0m")
+    print(f"\033[1;35mRunning v{VERSION} [ENV: {cfg.env}]\033[0m")
+    print()
 
 
 def configure_logging(level: str) -> None:
@@ -29,6 +42,7 @@ def configure_logging(level: str) -> None:
 
 def main() -> None:
     cfg = load()
+    print_banner(cfg)
     configure_logging(cfg.log_level)
     log = structlog.get_logger()
     log.info(
