@@ -16,6 +16,8 @@ class Config:
     idle_sleep: float
     error_backoff: float
     log_level: str
+    virtual_can_port: int
+    heartbeat_interval: float
 
 
 _ENV_LOG_LEVEL = {"DEV": "DEBUG", "PROD": "INFO"}
@@ -47,4 +49,6 @@ def load() -> Config:
         idle_sleep=float(_env("IDLE_SLEEP", "30")),
         error_backoff=float(_env("ERROR_BACKOFF", "60")),
         log_level=_ENV_LOG_LEVEL.get(env.upper(), "INFO"),
+        virtual_can_port=int(_env("VIRTUAL_CAN_PORT", "8100")),
+        heartbeat_interval=float(_env("HEARTBEAT_INTERVAL", "5")),
     )

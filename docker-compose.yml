@@ -48,6 +48,7 @@ services:
             CLOUD_MQTT_USER: ${CLOUD_MQTT_USER}
             CLOUD_MQTT_PASSWORD: ${CLOUD_MQTT_PASSWORD}
             CAN_PORT: "8000"
+            VIRTUAL_CAN_PORTS: "8100"
             LOCAL_PUBLISH_INTERVAL: "20"
             CLOUD_PUBLISH_INTERVAL: "100"
             PING_INTERVAL: "5000"
@@ -113,6 +114,8 @@ services:
             MAX_BATCH_AGE: "600"
             IDLE_SLEEP: "10"
             ERROR_BACKOFF: "30"
+            VIRTUAL_CAN_PORT: "8100"
+            HEARTBEAT_INTERVAL: "5"
 
     nanomq:
         image: emqx/nanomq:latest
