@@ -10,4 +10,5 @@ dependencies = [
     "pyarrow>=17",
     "structlog>=24.4",
     "gr-ulid>=1.1",
+    "boto3>=1.35",
 ]
