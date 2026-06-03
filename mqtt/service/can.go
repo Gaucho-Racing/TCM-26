@@ -115,7 +115,12 @@ func shouldPublishOn(
 	return true
 }
 
-func ListenCAN(port string) {
+// ListenCAN binds a UDP port and dispatches incoming CAN-format frames
+// through PublishData. The skipSPISwap flag controls whether the 16-bit
+// byte-pair swap (required to undo icanspi's SPI byte ordering) is
+// applied — set to false for icanspi inputs, true for virtual CAN ports
+// where the sender is a normal software process writing bytes in order.
+func ListenCAN(port string, skipSPISwap bool) {
 	shouldLog := false
 	if config.Env == "DEV" {
 		shouldLog = true
@@ -123,7 +128,7 @@ func ListenCAN(port string) {
 
 	portInt, err := strconv.Atoi(port)
 	if err != nil {
-		utils.SugarLogger.Fatalf("[CAN] Failed to convert port to int: %v", err)
+		utils.SugarLogger.Fatalf("[CAN:%s] Failed to convert port to int: %v", port, err)
 	}
 	addr := net.UDPAddr{
 		Port: portInt,
@@ -131,9 +136,10 @@ func ListenCAN(port string) {
 	}
 	conn, err := net.ListenUDP("udp", &addr)
 	if err != nil {
-		utils.SugarLogger.Fatalf("[CAN] Failed to create UDP connection: %v", err)
+		utils.SugarLogger.Fatalf("[CAN:%s] Failed to create UDP connection: %v", port, err)
 	}
 	defer conn.Close()
+	utils.SugarLogger.Infof("[CAN:%s] listening (skipSPISwap=%t)", port, skipSPISwap)
 
 	for {
 		buffer := make([]byte, 1024)
@@ -226,19 +232,28 @@ func ListenCAN(port string) {
 		// see the data in the original memory order. For odd lengths, copy one
 		// extra byte from the trailing padding so the final byte's pair partner
 		// is included in the swap, then trim.
-		swapLen := length
-		if swapLen%2 == 1 {
-			swapLen++
+		//
+		// Virtual CAN producers (skipSPISwap=true) write bytes in their natural
+		// order, so we just copy the payload through without swapping.
+		var payload []byte
+		if skipSPISwap {
+			payload = make([]byte, length)
+			copy(payload, buffer[6:6+length])
+		} else {
+			swapLen := length
+			if swapLen%2 == 1 {
+				swapLen++
+			}
+			if swapLen+6 > n {
+				swapLen = length // safety: no extra byte available, leave odd byte alone
+			}
+			payload = make([]byte, swapLen)
+			copy(payload, buffer[6:6+swapLen])
+			for i := 0; i+1 < swapLen; i += 2 {
+				payload[i], payload[i+1] = payload[i+1], payload[i]
+			}
+			payload = payload[:length]
 		}
-		if swapLen+6 > n {
-			swapLen = length // safety: no extra byte available, leave odd byte alone
-		}
-		payload := make([]byte, swapLen)
-		copy(payload, buffer[6:6+swapLen])
-		for i := 0; i+1 < swapLen; i += 2 {
-			payload[i], payload[i+1] = payload[i+1], payload[i]
-		}
-		payload = payload[:length]
 
 		if shouldLog {
 			utils.SugarLogger.Infof("[CAN] Bus: %d", bus)
