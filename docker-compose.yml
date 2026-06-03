@@ -110,7 +110,7 @@ services:
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
             BATCH_SIZE: "1000000"
-            MAX_BATCH_AGE_S: "300"
+            MAX_BATCH_AGE_S: "600"
             IDLE_SLEEP_S: "10"
             ERROR_BACKOFF_S: "30"
 
