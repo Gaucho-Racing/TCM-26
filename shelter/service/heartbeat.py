@@ -3,6 +3,7 @@ import struct
 import threading
 import time
 
+import ulid
 from loguru import logger
 
 from config.config import Config
@@ -56,6 +57,7 @@ def _get_oneshot_sock() -> socket.socket:
 def send_batch(
     cfg: Config,
     *,
+    batch_id: ulid.ULID,
     rows: int,
     compressed_bytes: int,
     upload_ms: int,
@@ -63,8 +65,13 @@ def send_batch(
     ratio_x100: int,
     trigger: str,
 ) -> None:
-    """One-shot tcm_shelter_batch (0x211) — fired after each successful upload."""
-    payload = struct.pack(
+    """One-shot tcm_shelter_batch (0x211) — fired after each successful upload.
+
+    Payload is 32 bytes: 16 bytes of upload stats + the 16 raw bytes of
+    the batch ULID. The ULID lets the downstream ingest worker target
+    the exact parquet file without scanning S3.
+    """
+    header = struct.pack(
         "<IIHHHBB",
         rows & 0xFFFFFFFF,
         compressed_bytes & 0xFFFFFFFF,
@@ -74,6 +81,7 @@ def send_batch(
         TRIGGER_CODES.get(trigger, 0xFF),
         0,  # reserved
     )
+    payload = header + bytes(batch_id)  # 16 + 16 = 32
     _send(_get_oneshot_sock(), cfg.virtual_can_port, SHELTER_BATCH_CAN_ID, payload)
 
 
