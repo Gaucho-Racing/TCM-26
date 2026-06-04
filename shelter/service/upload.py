@@ -5,8 +5,11 @@ from config.config import Config
 
 
 def upload(df: pl.DataFrame, cfg: Config, batch_id: ulid.ULID) -> str:
+    # Per-vehicle subdir so two cars on the same tcm class can run
+    # concurrently without colliding (and IAM/analytics can scope per
+    # vehicle later without rewriting the prefix scheme).
     prefix = cfg.s3_uri.rstrip("/")
-    key = f"{prefix}/{batch_id.prefixed('batch')}.parquet"
+    key = f"{prefix}/{cfg.vehicle_id}/{batch_id.prefixed('batch')}.parquet"
     df.write_parquet(
         key,
         compression="zstd",
