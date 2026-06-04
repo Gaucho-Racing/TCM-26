@@ -52,6 +52,7 @@ def run_batch(cfg: Config, s3, trigger: str, status: ShelterStatus) -> bool:
         )
         send_batch(
             cfg,
+            batch_id=batch_id,
             rows=len(df),
             compressed_bytes=head["ContentLength"],
             upload_ms=int(upload_s * 1000),
