@@ -6,11 +6,14 @@ name: tcm26-dev
 # that also wants 1883/5432/8000/8001 will collide; that's intentional, the
 # Jetson is a dedicated host.
 #
-# This file is the dev compose only: builds from local source, runs
-# tcm-mqtt under air for hot reload, no restart policy so crashes are
+# This file is the dev compose only: TCM-26's own services (mqtt,
+# icanspi, shelter) build from local source under air for hot reload.
+# Cross-repo Mapache services (gr26, live) pull pinned images from
+# GHCR — bind-mounting their source would require a sibling Mapache
+# checkout that not every dev has. No restart policy so crashes are
 # visible in `docker compose logs`. Env values are inlined (no .env
-# file) — change them here when iterating. Use it on a laptop or a dev
-# Jetson while iterating.
+# file) — change them here when iterating. Use it on a laptop or a
+# dev Jetson while iterating.
 #
 # The on-vehicle production stack is a SEPARATE compose in the
 # `jetson-infra` repo — it pulls pinned GHCR images, drops the air
@@ -70,13 +73,10 @@ services:
             - /lib/modules:/lib/modules:ro
 
     gr26:
-        build:
-            context: ../Mapache/gr26
-            dockerfile: Dockerfile.dev
+        image: ghcr.io/gaucho-racing/mapache/gr26:latest
         network_mode: host
-        volumes:
-            - ../Mapache/gr26:/app/gr26
-            - gr26_go_cache:/go
+        depends_on:
+            - nanomq
         environment:
             ENV: "DEV"
             PORT: "8001"
@@ -89,15 +89,10 @@ services:
             MQTT_PORT: "1883"
 
     live:
-        build:
-            context: ../Mapache/live
-            dockerfile: Dockerfile.dev
+        image: ghcr.io/gaucho-racing/mapache/live:latest
         network_mode: host
         depends_on:
             - nanomq
-        volumes:
-            - ../Mapache/live:/app/live
-            - live_go_cache:/go
         environment:
             ENV: "DEV"
             PORT: "7015"
@@ -152,5 +147,3 @@ services:
 volumes:
     pgdata:
     mqtt_go_cache:
-    gr26_go_cache:
-    live_go_cache:
