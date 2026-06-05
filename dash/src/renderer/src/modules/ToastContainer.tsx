@@ -32,9 +32,7 @@ function ToastItem({ toast, dismiss }: { toast: Toast; dismiss: (id: string) => 
   }, [toast.id, toast.persistent, dismiss]);
 
   const isVisible = hasEntered && !toast.isExiting;
-  const positionClasses = isVisible
-    ? 'opacity-100 translate-x-0'
-    : 'opacity-0 translate-x-8';
+  const positionClasses = isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8';
   // Decelerate on enter, accelerate away on exit so motion feels grounded.
   const easingClass = toast.isExiting ? 'ease-in' : 'ease-out';
 
@@ -53,9 +51,9 @@ function ToastItem({ toast, dismiss }: { toast: Toast; dismiss: (id: string) => 
         <div className="flex items-center gap-4">
           {toast.icon !== undefined && <div className="shrink-0">{toast.icon}</div>}
           <div className="flex min-w-0 flex-col gap-1">
-            <div className="text-2xl font-bold leading-tight">{toast.message}</div>
+            <div className="text-2xl leading-tight font-bold">{toast.message}</div>
             {toast.body !== undefined && (
-              <div className="text-base font-medium leading-tight opacity-90">{toast.body}</div>
+              <div className="text-base leading-tight font-medium opacity-90">{toast.body}</div>
             )}
           </div>
         </div>
@@ -72,7 +70,7 @@ export function ToastContainer() {
   const toasts = useToastStore((s) => s.toasts);
   const dismiss = useToastStore((s) => s.dismiss);
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[28rem] flex-col gap-3">
+    <div className="pointer-events-none fixed right-4 bottom-4 z-50 flex w-[28rem] flex-col gap-3">
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} dismiss={dismiss} />
       ))}

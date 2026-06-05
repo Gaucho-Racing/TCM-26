@@ -156,7 +156,8 @@ function tcmBitRow(
   downValue: string,
 ): { status: ConnStatus; value: string } {
   if (tcmReceivedAt === undefined) return { status: 'unknown', value: 'no status' };
-  if (tcmAge > TCM_STATUS_STALE_MS) return { status: 'warn', value: `stale ${(tcmAge / 1000).toFixed(0)}s` };
+  if (tcmAge > TCM_STATUS_STALE_MS)
+    return { status: 'warn', value: `stale ${(tcmAge / 1000).toFixed(0)}s` };
   if (!bitOk) return { status: 'down', value: downValue };
   return { status: 'ok', value: okValue };
 }
@@ -202,7 +203,13 @@ export function ConnectionsPanel() {
 
   // MAPACHE is mapache_ok with the ping latency as its ok-state value;
   // ping over CLOUD_PING_WARN_MS demotes from ok to warn.
-  let mapache = tcmBitRow(tcmReceivedAt, tcmAge, mapacheOk, `${Math.round(cloudPing)} ms`, 'no pong');
+  let mapache = tcmBitRow(
+    tcmReceivedAt,
+    tcmAge,
+    mapacheOk,
+    `${Math.round(cloudPing)} ms`,
+    'no pong',
+  );
   if (mapache.status === 'ok' && cloudPing > CLOUD_PING_WARN_MS) {
     mapache = { status: 'warn', value: `${Math.round(cloudPing)} ms` };
   }
