@@ -80,16 +80,30 @@ services:
         environment:
             ENV: "DEV"
             PORT: "8001"
+            # Local-only deployment — no Rincon registry, no auth checking,
+            # CLICKHOUSE_HOST intentionally unset so gr26 skips CH entirely.
+            # The on-car dash gets its live signals from the local `live`
+            # service (which subscribes to gr26's query/live/* topics).
             SKIP_AUTH_CHECK: "true"
-            ENABLE_SIGNAL_DB: "false"
-            ENABLE_SIGNAL_WS: "true"
             MQTT_HOST: localhost
             MQTT_PORT: "1883"
-            DATABASE_HOST: localhost
-            DATABASE_PORT: "5432"
-            DATABASE_NAME: gr26
-            DATABASE_USER: postgres
-            DATABASE_PASSWORD: password
+
+    live:
+        build:
+            context: ../Mapache/live
+            dockerfile: Dockerfile.dev
+        network_mode: host
+        depends_on:
+            - nanomq
+        volumes:
+            - ../Mapache/live:/app/live
+            - live_go_cache:/go
+        environment:
+            ENV: "DEV"
+            PORT: "7015"
+            MQTT_HOST: localhost
+            MQTT_PORT: "1883"
+            CACHE_WINDOW_SEC: "60"
 
     shelter:
         build:
@@ -139,3 +153,4 @@ volumes:
     pgdata:
     mqtt_go_cache:
     gr26_go_cache:
+    live_go_cache:
