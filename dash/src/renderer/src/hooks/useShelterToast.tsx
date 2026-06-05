@@ -67,6 +67,10 @@ function busyTitle(state: number): string {
 // batch lands in S3. Morphs the title in place between claiming and
 // uploading; on return to idle the toast flips to a plain "backup done"
 // success (icon + body cleared, non-persistent so it TTLs out).
+//
+// Also watches tcm_shelter_batch_* signals and fires a separate
+// compact success toast with row count + upload duration whenever a
+// new 0x211 batch event lands.
 export function useShelterToast() {
   const state = useSignalStore((s) => s.signals['tcm_shelter_state']?.value);
   const toastIdRef = useRef<string | null>(null);
@@ -108,4 +112,25 @@ export function useShelterToast() {
       toastIdRef.current = null;
     }
   }, [state]);
+
+  // Stats toast on each successful batch upload. We trigger on
+  // tcm_shelter_batch_trigger's receivedAt because it's the last field
+  // in the 0x211 frame's decoder order — by the time it lands in the
+  // store, rows / upload_ms have already arrived, so we never read a
+  // stale (previous-batch) row count.
+  const batchTriggerAt = useSignalStore((s) => s.signals['tcm_shelter_batch_trigger']?.receivedAt);
+  const batchRows = useSignalStore((s) => s.signals['tcm_shelter_batch_rows']?.value);
+  const batchUploadMs = useSignalStore((s) => s.signals['tcm_shelter_batch_upload_ms']?.value);
+  const seenBatchAtRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (batchTriggerAt === undefined) return;
+    if (batchTriggerAt === seenBatchAtRef.current) return;
+    seenBatchAtRef.current = batchTriggerAt;
+    if (batchRows === undefined || batchUploadMs === undefined) return;
+    pushToast(
+      `Uploaded ${batchRows.toLocaleString()} rows in ${(batchUploadMs / 1000).toFixed(1)}s`,
+      { level: 'success' },
+    );
+  }, [batchTriggerAt, batchRows, batchUploadMs]);
 }

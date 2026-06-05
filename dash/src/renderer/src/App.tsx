@@ -41,6 +41,10 @@ const SUBSCRIBED_SIGNALS = [
   'tcm_cache_size',
   // Shelter heartbeat (0x210) — drives the "keep car on" backup toast.
   'tcm_shelter_state',
+  // Shelter batch (0x211) — fires the per-upload stats toast.
+  'tcm_shelter_batch_rows',
+  'tcm_shelter_batch_upload_ms',
+  'tcm_shelter_batch_trigger',
   // Telemetry panel signals
   ...TELEMETRY_SIGNALS,
   // APPS panel signals
