@@ -6,11 +6,14 @@ name: tcm26-dev
 # that also wants 1883/5432/8000/8001 will collide; that's intentional, the
 # Jetson is a dedicated host.
 #
-# This file is the dev compose only: builds from local source, runs
-# tcm-mqtt under air for hot reload, no restart policy so crashes are
+# This file is the dev compose only: TCM-26's own services (mqtt,
+# icanspi, shelter) build from local source under air for hot reload.
+# Cross-repo Mapache services (gr26, live) pull pinned images from
+# GHCR — bind-mounting their source would require a sibling Mapache
+# checkout that not every dev has. No restart policy so crashes are
 # visible in `docker compose logs`. Env values are inlined (no .env
-# file) — change them here when iterating. Use it on a laptop or a dev
-# Jetson while iterating.
+# file) — change them here when iterating. Use it on a laptop or a
+# dev Jetson while iterating.
 #
 # The on-vehicle production stack is a SEPARATE compose in the
 # `jetson-infra` repo — it pulls pinned GHCR images, drops the air
@@ -70,26 +73,34 @@ services:
             - /lib/modules:/lib/modules:ro
 
     gr26:
-        build:
-            context: ../Mapache/gr26
-            dockerfile: Dockerfile.dev
+        image: ghcr.io/gaucho-racing/mapache/gr26:latest
         network_mode: host
-        volumes:
-            - ../Mapache/gr26:/app/gr26
-            - gr26_go_cache:/go
+        depends_on:
+            - nanomq
         environment:
             ENV: "DEV"
             PORT: "8001"
+            # Local-only deployment — no Rincon registry, no auth checking,
+            # CLICKHOUSE_HOST intentionally unset so gr26 skips CH entirely.
+            # The on-car dash gets its live signals from the local `live`
+            # service (which subscribes to gr26's query/live/* topics).
             SKIP_AUTH_CHECK: "true"
-            ENABLE_SIGNAL_DB: "false"
-            ENABLE_SIGNAL_WS: "true"
             MQTT_HOST: localhost
             MQTT_PORT: "1883"
-            DATABASE_HOST: localhost
-            DATABASE_PORT: "5432"
-            DATABASE_NAME: gr26
-            DATABASE_USER: postgres
-            DATABASE_PASSWORD: password
+
+    live:
+        image: ghcr.io/gaucho-racing/mapache/live:latest
+        network_mode: host
+        depends_on:
+            - nanomq
+        environment:
+            ENV: "DEV"
+            PORT: "7015"
+            MQTT_HOST: localhost
+            MQTT_PORT: "1883"
+            # On-car the dash ignores backfill, so a tight cache window
+            # is fine — keeps memory usage low.
+            CACHE_WINDOW_SEC: "10"
 
     shelter:
         build:
@@ -138,4 +149,3 @@ services:
 volumes:
     pgdata:
     mqtt_go_cache:
-    gr26_go_cache:
