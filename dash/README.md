@@ -4,6 +4,10 @@ Electron + React + TypeScript driver display for the GR26 race car. Runs on
 the Jetson, fullscreen kiosk on the 1600x600 mounted display, subscribes to
 the local `gr26` ingest service over WebSocket for real-time telemetry.
 
+> **Deploying on the Jetson?** See [`../docs/dash.md`](../docs/dash.md). The
+> golden path is `./scripts/install-systemd.sh` (auto-update timer +
+> .deb-installed binary). This file only covers local development.
+
 ## Stack
 
 - **Electron** for the kiosk shell
@@ -105,103 +109,9 @@ Tailwind handles all the styling — no separate CSS files beyond
 `src/renderer/src/index.css` (just the `@import "tailwindcss"` + a few global
 resets).
 
-## Pre-built AppImages
-
-Pre-built AppImages are available in the `dist/` directory:
-
-| File                                  | Arch  | Target            |
-| ------------------------------------- | ----- | ----------------- |
-| `dist/GR26 Dash-1.3.0.AppImage`       | x64   | Local dev machine |
-| `dist/GR26 Dash-1.3.0-arm64.AppImage` | arm64 | Jetson (GR26)     |
-
-### Local dev machine (x64)
-
-Run the x64 AppImage directly on your Linux desktop:
-
-```bash
-cd dash
-chmod +x dist/"GR26 Dash-1.3.0.AppImage"
-./dist/"GR26 Dash-1.3.0.AppImage"
-```
-
-By default it connects to `ws://localhost:8001/gr26/live`. To point at a
-different WebSocket or vehicle ID, set the environment at runtime:
-
-```bash
-VITE_GR26_WS_URL=ws://192.168.1.50:8001/gr26/live \
-  VITE_GR26_VEHICLE_ID=gr26-dev \
-  ./dist/"GR26 Dash-1.3.0.AppImage"
-```
-
-> **FUSE note**: AppImages require FUSE to run. If missing, install it:
-> `sudo apt update && sudo apt install -y fuse`.
-> Without FUSE you can extract the contents with
-> `./dist/"GR26 Dash-1.3.0.AppImage" --appimage-extract` and run the binary
-> inside `squashfs-root/` directly, but installing FUSE is simpler.
-
-### Jetson (arm64)
-
-```bash
-cd dash
-chmod +x dist/"GR26 Dash-1.3.0-arm64.AppImage"
-sudo mkdir -p "/opt/GR26 Dash"
-sudo mv dist/"GR26 Dash-1.3.0-arm64.AppImage" "/opt/GR26 Dash/gr26-dash"
-```
-
 ## Deployment
 
-### Option A: systemd user service (recommended for Jetson)
-
-Drop this unit at `~/.config/systemd/user/gr26-dash.service`:
-
-```ini
-[Unit]
-Description=GR26 Driver Dashboard
-After=graphical-session.target
-
-[Service]
-Type=simple
-ExecStart=/opt/GR26 Dash/gr26-dash
-Restart=always
-RestartSec=3
-Environment=ELECTRON_DISABLE_SECURITY_WARNINGS=1
-
-[Install]
-WantedBy=graphical-session.target
-```
-
-Enable:
-
-```bash
-systemctl --user daemon-reload
-systemctl --user enable --now gr26-dash
-loginctl enable-linger $USER   # so the service stays up without a login session
-```
-
-Logs: `journalctl --user -u gr26-dash`.
-
-### Option B: xdg-autostart desktop entry
-
-If you'd rather just have it launch as part of the GUI session:
-
-`~/.config/autostart/gr26-dash.desktop`:
-
-```ini
-[Desktop Entry]
-Type=Application
-Name=GR26 Dash
-Exec=/opt/GR26 Dash/gr26-dash
-X-GNOME-Autostart-enabled=true
-```
-
-systemd is more robust (auto-restart on crash, proper logging),
-so prefer that for the deployed car.
-
-## Code signing
-
-Linux apps don't require code signing for kiosk-style use. We're not
-distributing through any store and the Jetson installs `.deb` packages
-locally, so no GPG/notarization step is needed.
-
-If you ever want to sign the `.deb` for repo distribution, configure
-`debSign` via `electron-builder` — but for the on-vehicle case it's overkill.
+See [`../docs/dash.md`](../docs/dash.md) — covers .deb install, the
+auto-update timer, kiosk-mode systemd unit, and operational commands.
+Don't hand-roll an AppImage drop and a custom systemd unit; the install
+script in `scripts/install-systemd.sh` is the supported path.
