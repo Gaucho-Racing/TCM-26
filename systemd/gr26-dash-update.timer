@@ -10,8 +10,10 @@ Documentation=https://github.com/Gaucho-Racing/TCM-26
 # multiple chances to pick up a new release within a typical session.
 OnBootSec=1min
 OnUnitActiveSec=15min
-# If the system was off when a fire was scheduled, run it on next boot.
-Persistent=true
+# No Persistent=true on purpose: OnBootSec already guarantees a fire 1 min
+# after every boot, and the car is typically powered off for long stretches.
+# Replaying every missed 15-min interval at boot would just be a stack of
+# redundant "already up to date" checks against the same release.
 
 [Install]
 WantedBy=timers.target

@@ -18,6 +18,11 @@ set -uo pipefail
 
 REPO="Gaucho-Racing/TCM-26"
 PACKAGE="gr26-dash"
+# User that owns the dash systemd unit on the Jetson. Hardcoded — matches
+# the convention in install-systemd.sh ("Run as the user that will own
+# the dash, e.g. tcm"). If you ever bring up the dash under a different
+# user, change this too.
+DASH_USER="tcm"
 DISABLED_FLAG="/etc/gr26-dash/updates-disabled"
 LOG_PREFIX="[gr26-dash-update]"
 # --connect-timeout fails fast when the car is offline — DNS/TCP can't
@@ -82,10 +87,31 @@ if ! curl --connect-timeout "${CONNECT_TIMEOUT}" --max-time "${DOWNLOAD_TIMEOUT}
 fi
 
 log "installing ${TMP}"
-if dpkg -i "${TMP}"; then
-    log "installed ${LATEST_TAG}"
-else
+if ! dpkg -i "${TMP}"; then
     log "dpkg install failed, keeping previous version"
+    exit 0
+fi
+log "installed ${LATEST_TAG}"
+
+# Restart the running dash so the driver sees the new version without
+# waiting for the next boot. systemctl --user lives in DASH_USER's
+# session — reach it from root via runuser + the user's
+# XDG_RUNTIME_DIR. Lingering (set by install-systemd.sh) keeps that
+# DBus socket alive even without a login.
+#
+# A ~3s blank flash on the driver display is acceptable here: the
+# updater only gets to this step on a *successful new release install*,
+# which happens at most a few times a week.
+DASH_UID=$(id -u "${DASH_USER}" 2>/dev/null || echo "")
+if [ -z "${DASH_UID}" ] || [ ! -S "/run/user/${DASH_UID}/bus" ]; then
+    log "warning: ${DASH_USER}'s user session not reachable — new version will pick up on next boot"
+    exit 0
+fi
+if runuser -u "${DASH_USER}" -- env "XDG_RUNTIME_DIR=/run/user/${DASH_UID}" \
+    systemctl --user restart gr26-dash.service; then
+    log "restarted gr26-dash.service"
+else
+    log "warning: dash restart failed; new version on next boot"
 fi
 
 exit 0
