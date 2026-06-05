@@ -22,6 +22,7 @@ func main() {
 	service.InitializePings()
 	service.InitializeResourceQuery()
 	service.InitializeTCMStatus()
+	service.InitializeClockStatus()
 
 	// Virtual CAN listeners run in the background; the real icanspi
 	// listener blocks main below.

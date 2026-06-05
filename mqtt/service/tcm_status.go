@@ -17,6 +17,7 @@ const (
 	tcmStatusConnectionOK = 1 << 0 // generic internet (DNS reachable)
 	tcmStatusMQTTOK       = 1 << 1 // cloud broker connected
 	tcmStatusMapacheOK    = 1 << 2 // cloud Mapache responding (fresh pong)
+	tcmStatusClockOK      = 1 << 3 // local clock past 2003-10-31 (RTC/NTP synced)
 )
 
 // internetCheckTarget is a TCP target we dial to verify general internet
@@ -85,6 +86,9 @@ func publishTCMStatus() {
 	}
 	if mapacheOK {
 		statusBits |= tcmStatusMapacheOK
+	}
+	if ClockPlausible() {
+		statusBits |= tcmStatusClockOK
 	}
 
 	// TCM Status payload layout (8 bytes):
