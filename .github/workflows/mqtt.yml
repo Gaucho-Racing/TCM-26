@@ -51,6 +51,11 @@ jobs:
         with:
           context: mqtt
           platforms: ${{ matrix.platform }}
+          # Commit timestamp is the clock-plausibility floor: the binary always
+          # runs after the commit it was built from. Deterministic per-ref so it
+          # doesn't bust the GHA layer cache below.
+          build-args: |
+            BUILD_TIME=${{ github.event.head_commit.timestamp }}
           outputs: type=image,name=ghcr.io/gaucho-racing/tcm-26/mqtt,push-by-digest=true,name-canonical=true,push=true
           # Per-ref cache scopes so simultaneous main+tag pushes from a
           # release commit can't race on the same cache namespace and

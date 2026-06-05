@@ -12,7 +12,12 @@ RUN go mod download
 COPY . ./
 ARG TARGETOS
 ARG TARGETARCH
-RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o /tcm_mqtt
+# BUILD_TIME (RFC3339) is injected as the floor for the local-clock
+# plausibility check. When unset it resolves to an empty string, which
+# utils.parseBuildTime detects and replaces with its hardcoded fallback.
+ARG BUILD_TIME
+RUN GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build -ldflags "-X 'mqtt/config.BuildTime=${BUILD_TIME}'" -o /tcm_mqtt
 
 ##
 ## Deploy
