@@ -39,12 +39,23 @@ func SubscribePong() {
 	mqtt.Subscribe(topic, func(client mq.Client, msg mq.Message) {
 		ping := binary.BigEndian.Uint64(msg.Payload()[:8])
 		pong := binary.BigEndian.Uint64(msg.Payload()[8:])
-		received := time.Now().UnixMicro()
-		uploadLatency := time.Now().UnixMicro() - int64(ping)
-		rtt := received - int64(ping)
+		now := time.Now()
+		uploadLatency := now.UnixMicro() - int64(ping)
+
+		// Cache freshness + latency in the shared state so
+		// publishTCMStatus reads without a DB round-trip. Clamp to u16
+		// to match the wire field width on TCM Status.
+		latencyMs := uploadLatency / 1000
+		if latencyMs < 0 {
+			latencyMs = 0
+		}
+		if latencyMs > 65535 {
+			latencyMs = 65535
+		}
+		state.setPong(now, uint16(latencyMs))
 
 		go UpdatePong(int(ping), int(pong), int(uploadLatency))
-		utils.SugarLogger.Infof("[MQ] Received pong in %d ms", rtt/1000)
+		utils.SugarLogger.Infof("[MQ] Received pong in %d ms", latencyMs)
 	})
 }
 

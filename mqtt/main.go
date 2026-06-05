@@ -21,8 +21,10 @@ func main() {
 
 	service.InitializePings()
 	service.InitializeResourceQuery()
+	// State watchers must start before the publisher so the first
+	// publish has live readings rather than zero defaults.
+	service.InitializeTCMState()
 	service.InitializeTCMStatus()
-	service.InitializeClockStatus()
 
 	// Virtual CAN listeners run in the background; the real icanspi
 	// listener blocks main below.
