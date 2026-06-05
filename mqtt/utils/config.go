@@ -24,27 +24,11 @@ func VerifyConfig() {
 	pingMs := parseIntervalMs(config.PingIntervalRaw, 5000, "PING_INTERVAL")
 	config.PingInterval = time.Duration(pingMs) * time.Millisecond
 
-	config.MinValidTime = parseBuildTime(config.BuildTime)
-
 	SugarLogger.Infof("Vehicle ID: %s", config.VehicleID)
 	SugarLogger.Infof("Vehicle Upload Key: %d", config.VehicleUploadKey)
 	SugarLogger.Infof("Local Publish Interval: %dms", config.LocalPublishIntervalInt)
 	SugarLogger.Infof("Cloud Publish Interval: %dms", config.CloudPublishIntervalInt)
 	SugarLogger.Infof("Ping Interval: %s", config.PingInterval)
-	SugarLogger.Infof("Clock floor (build time): %s", config.MinValidTime)
-}
-
-// parseBuildTime parses the RFC3339 build time into a time.Time. A bad or
-// missing ldflag must not brick the service, so on failure we fall back to a
-// conservative hardcoded floor rather than Fatalln.
-func parseBuildTime(raw string) time.Time {
-	const fallback = "2026-01-01T00:00:00Z"
-	t, err := time.Parse(time.RFC3339, raw)
-	if err != nil {
-		SugarLogger.Errorf("BuildTime %q is not RFC3339, using %s: %v", raw, fallback, err)
-		t, _ = time.Parse(time.RFC3339, fallback)
-	}
-	return t
 }
 
 func parseIntervalMs(raw string, fallback int, name string) int {

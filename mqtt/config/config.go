@@ -74,14 +74,3 @@ var LastCloudPublish = cmap.ConcurrentMap[string, uint64]{}
 // rescales those derived thresholds.
 var PingIntervalRaw = os.Getenv("PING_INTERVAL")
 var PingInterval time.Duration
-
-// BuildTime is the RFC3339 build/commit time, injected at build via
-// -ldflags "-X 'mqtt/config.BuildTime=...'". The local clock can never
-// legitimately predate this, so it serves as the floor for clock
-// plausibility checks. The fallback default covers `go run`/dev builds
-// where no ldflag is set.
-var BuildTime = "2026-01-01T00:00:00Z"
-
-// MinValidTime is BuildTime parsed into a time.Time. Populated by
-// utils.VerifyConfig at startup.
-var MinValidTime time.Time
