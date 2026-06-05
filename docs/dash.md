@@ -13,6 +13,22 @@ from the local `gr26` ingest service.
 - **electron-vite** for the dev/build pipeline
 - **electron-builder** for packaging the `.deb` and `.AppImage`
 
+## Display layout
+
+The Jetson drives a **1600×600** panel (16:6, very wide). Three-column grid:
+
+```
+┌─────────────┬───────────────────────────┬─────────────┐
+│   STATE     │       SPEED + SoC         │   STATUS    │
+│   POWER     │        + TEMPS            │   LIGHTS    │
+│   TORQUE    │                           │   AUX       │
+│  (~400px)   │       (flexible ~800px)   │  (~400px)   │
+└─────────────┴───────────────────────────┴─────────────┘
+```
+
+Tailwind handles all styling; the only CSS file is `src/renderer/src/index.css`
+(`@import "tailwindcss"` + a handful of global resets).
+
 ## Architecture
 
 Three Electron processes cooperate:
@@ -67,6 +83,26 @@ dash/
 └── package.json
 ```
 
+## Signals
+
+The dash subscribes to signal names emitted by the `gr26` ingest service.
+Names are composed as `{source_node}_{field_name}` from the MQTT topic
+structure. The current subscription set:
+
+| Signal                                  | Source        | Field                              |
+| --------------------------------------- | ------------- | ---------------------------------- |
+| `ecu_ecu_state`                         | ECU Status 1  | state machine bitfield             |
+| `ecu_power_level` / `ecu_torque_map`    | ECU Status 1  | u4 nibbles                         |
+| `ecu_max_cell_temp`                     | ECU Status 1  | hottest cell, °C                   |
+| `ecu_accumulator_soc` / `ecu_glv_soc`   | ECU Status 1  | percent                            |
+| `ecu_vehicle_speed`                     | ECU Status 2  | absolute speed, MPH                |
+| `ecu_ts_voltage`                        | ECU Status 2  | tractive system voltage            |
+| `ecu_relay_states`                      | ECU Status 3  | safety bitfield (BMS/IMD/BSPD/SW)  |
+
+Adding a signal: append to `SUBSCRIBED_SIGNALS` in
+`src/renderer/src/App.tsx`, then read it from any component with
+`useSignal('signal_name')`.
+
 ## Configuration
 
 Build-time env vars (read by Vite during `npm run build`):
@@ -100,6 +136,12 @@ npm run dev
 
 A normal resizable window opens. Kiosk mode is off, so `Cmd+Q` /
 `Ctrl+Q` / Devtools all work normally.
+
+Type-check both the main-process and renderer trees:
+
+```bash
+npm run typecheck
+```
 
 To point at a remote ingest (e.g. cloud Mapache, or another car):
 
@@ -196,11 +238,17 @@ boot. Timer retries on its 15 min cadence.
 
 ### When does a new version actually take effect?
 
-A `dpkg -i` while the dash is running replaces files in
-`/opt/GR26 Dash/` but the running process keeps its mmap'd copy of
-the old binary. The new version takes effect on the next boot
-**or** on the next `systemctl --user restart gr26-dash` — never
-mid-session, no driver-visible flicker.
+Immediately. After a successful `dpkg -i`, the updater script runs
+`systemctl --user restart gr26-dash.service` (as the `tcm` user, via
+`runuser` + the user's `XDG_RUNTIME_DIR`). The driver sees a ~3-second
+blank while systemd respawns the process onto the new binary on disk.
+
+That brief flash is the trade-off for not having "out of date until
+someone reboots the car" be a thing. The restart only fires on a real
+successful release install — at most a few times a week, often less.
+If the user session can't be reached (lingering off, dbus missing),
+the updater logs a warning and exits 0; the new version takes effect
+on the next boot.
 
 ## Operational commands
 
