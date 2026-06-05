@@ -98,7 +98,9 @@ services:
             PORT: "7015"
             MQTT_HOST: localhost
             MQTT_PORT: "1883"
-            CACHE_WINDOW_SEC: "60"
+            # On-car the dash ignores backfill, so a tight cache window
+            # is fine — keeps memory usage low.
+            CACHE_WINDOW_SEC: "10"
 
     shelter:
         build:
