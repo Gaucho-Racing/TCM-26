@@ -16,6 +16,7 @@ class Config:
     max_batch_age: float
     idle_sleep: float
     error_backoff: float
+    startup_delay: float
     log_level: str
     virtual_can_port: int
     heartbeat_interval: float
@@ -54,6 +55,7 @@ def load() -> Config:
         max_batch_age=float(_env("MAX_BATCH_AGE", "300")),
         idle_sleep=float(_env("IDLE_SLEEP", "30")),
         error_backoff=float(_env("ERROR_BACKOFF", "60")),
+        startup_delay=float(_env("STARTUP_DELAY", "10")),
         log_level=_ENV_LOG_LEVEL.get(env.upper(), "INFO"),
         virtual_can_port=int(_env("VIRTUAL_CAN_PORT", "8100")),
         heartbeat_interval=float(_env("HEARTBEAT_INTERVAL", "5")),

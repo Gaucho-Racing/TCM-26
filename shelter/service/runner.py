@@ -82,6 +82,14 @@ def _next_trigger(pending: int, elapsed: float, cfg: Config) -> str | None:
 
 def start_runner(cfg: Config, s3, status: ShelterStatus) -> None:
     """Drain any existing backlog, then poll-and-batch by size or age."""
+    # Brief grace period so peer services (nanomq, postgres, gr26) have
+    # a chance to come up before we start hammering them. Without this
+    # the initial drain can race postgres readiness on a cold Jetson
+    # boot.
+    if cfg.startup_delay > 0:
+        logger.info(f"startup: sleeping {cfg.startup_delay}s before initial drain")
+        time.sleep(cfg.startup_delay)
+
     initial_pending = pending_count(cfg.pg_uri)
     status.set(pending=initial_pending)
     if initial_pending > 0:
