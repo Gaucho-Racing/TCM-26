@@ -6,7 +6,6 @@ import {
   TelemetryPanel,
   TELEMETRY_SIGNALS,
   APPS_SIGNALS,
-  CurrentPanel,
   APPSPanel,
   ToastContainer,
 } from './modules';
