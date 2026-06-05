@@ -1,7 +1,28 @@
 import { useEffect, useRef } from 'react';
 import { useSignal, useSignalStore } from '../store/signals';
 import { useNow } from '../hooks/useNow';
+import { VEHICLE_ID } from '../hooks/useSignals';
 import { SectionTitle } from './SectionTitle';
+
+// 24h clock so a driver glancing at the bar isn't squinting at AM/PM.
+function formatLocalTime(d: Date): string {
+  return d.toLocaleTimeString('en-US', { hour12: false });
+}
+
+// UTC HH:MM:SS sliced from the ISO string; cheaper than toLocaleTimeString
+// with a timezone override every tick.
+function formatUTCTime(d: Date): string {
+  return d.toISOString().slice(11, 19);
+}
+
+function TimeChip({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="flex items-baseline gap-1.5">
+      <span className="text-xs font-bold tracking-widest text-neutral-600">{label}</span>
+      <span className="font-mono text-sm font-bold text-neutral-300 tabular-nums">{value}</span>
+    </span>
+  );
+}
 
 // ── Constants ────────────────────────────────────────────────────────
 
@@ -254,6 +275,17 @@ export function ConnectionsPanel() {
         <StatusLight icon={<RadioTowerIcon />} status={mqtt.status} />
         <StatusLight icon={<MountainIcon />} status={shelterStatus} />
         <StatusLight icon={<ClockIcon />} status={clock.status} />
+      </div>
+      {/* Identity + wall clock — slim footer so the dash always shows
+          which car this is and what time the dash thinks it is. */}
+      <div className="flex items-baseline justify-between gap-2 border-t border-neutral-800 pt-2">
+        <span className="text-sm font-bold tracking-widest text-neutral-400">
+          {VEHICLE_ID.toUpperCase()}
+        </span>
+        <div className="flex items-baseline gap-3">
+          <TimeChip label="LOCAL" value={formatLocalTime(new Date(now))} />
+          <TimeChip label="UTC" value={formatUTCTime(new Date(now))} />
+        </div>
       </div>
     </div>
   );

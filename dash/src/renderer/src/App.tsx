@@ -8,7 +8,6 @@ import {
   APPS_SIGNALS,
   APPSPanel,
   ToastContainer,
-  StatusBar,
 } from './modules';
 
 const SUBSCRIBED_SIGNALS = [
@@ -61,19 +60,9 @@ export default function App() {
   return (
     <div className="relative grid h-screen w-screen grid-cols-[1fr_1.6fr_1fr] gap-3 overflow-hidden bg-neutral-950 p-4">
       <LeftColumn />
-      <MiddleColumn />
+      <SpeedPanel />
       <RightColumn />
       <ToastContainer />
-    </div>
-  );
-}
-
-/** Middle third: speedometer with a vehicle-id + clock status line below. */
-function MiddleColumn() {
-  return (
-    <div className="grid min-h-0 grid-rows-[1fr_auto] gap-3">
-      <SpeedPanel />
-      <StatusBar />
     </div>
   );
 }

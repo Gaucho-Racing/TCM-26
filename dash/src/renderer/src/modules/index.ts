@@ -9,4 +9,3 @@ export { APPSPanel, APPS_SIGNALS } from './APPSPanel';
 export { CurrentPanel } from './CurrentPanel';
 export { SectionTitle } from './SectionTitle';
 export { ToastContainer } from './ToastContainer';
-export { StatusBar } from './StatusBar';
