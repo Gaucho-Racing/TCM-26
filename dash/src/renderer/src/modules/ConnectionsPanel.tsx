@@ -275,11 +275,11 @@ export function ConnectionsPanel() {
       <div className="flex items-center justify-between gap-3">
         <div className="grid grid-cols-[auto_auto] items-baseline gap-x-2 gap-y-0.5">
           <span className="text-xs font-bold tracking-widest text-neutral-600">LOCAL</span>
-          <span className="font-mono text-sm font-bold text-neutral-300 tabular-nums">
+          <span className="font-mono text-lg font-bold text-neutral-300 tabular-nums">
             {formatLocalTime(new Date(now))}
           </span>
           <span className="text-xs font-bold tracking-widest text-neutral-600">UTC</span>
-          <span className="font-mono text-sm font-bold text-neutral-300 tabular-nums">
+          <span className="font-mono text-lg font-bold text-neutral-300 tabular-nums">
             {formatUTCTime(new Date(now))}
           </span>
         </div>
