@@ -64,13 +64,12 @@ function ToastItem({ toast, dismiss }: { toast: Toast; dismiss: (id: string) => 
   );
 }
 
-// Fixed bottom-right stack. Older toasts float upward as newer ones
-// arrive (newest sits closest to the corner, where the eye is drawn).
+// Fixed top-left stack. Newer toasts stack downward.
 export function ToastContainer() {
   const toasts = useToastStore((s) => s.toasts);
   const dismiss = useToastStore((s) => s.dismiss);
   return (
-    <div className="pointer-events-none fixed right-4 bottom-4 z-50 flex w-[28rem] flex-col gap-3">
+    <div className="pointer-events-none fixed bottom-4 left-4 z-50 flex w-[28rem] flex-col gap-3">
       {toasts.map((t) => (
         <ToastItem key={t.id} toast={t} dismiss={dismiss} />
       ))}

@@ -14,26 +14,26 @@ const STALE_MS = 5000;
  * | Requested metric   | Ingest signal                     | DBC source | Unit |
  * |--------------------|-----------------------------------|------------|------|
  * | TS voltage         | `bcu_ts_voltage`                  | —          | V    |
- * | GLV voltage        | `cu_12v_voltage`                  | —          | V    |
- * | AC current         | `placeholder_ac_current`          | —          | A    |
- * | DTI AC limit       | `placeholder_dti_ac_current_limit`| —          | A    |
+ * | GLV voltage        | `bcu_12v_voltage`                  | —          | V    |
+ * | AC current         | `bcu_accumulator_soc`          | —          | A    |
+ * | DTI AC limit       | `bcu_glv_soc`| —          | A    |
  * | TS current         | `bcu_accumulator_current`         | —          | A    |
  * | DC-DC current      | `acu_hv_input_current`            | —          | A    |
- * | Battery temp       | `ecu_max_cell_temp`               | —          | °C   |
- * | Motor temp         | `all_motor_temp`                  | —          | °C   |
- * | Inverter temp      | `gr_inv_u_mosfet_temp`            | —          | °C   |
+ * | Battery temp       | `bcu_max_cell_temp`               | —          | °C   |
+ * | Motor temp         | `dti_inv_motor_temp`              | —          | °C   |
+ * | Inverter temp      | `dti_inv_ctrl_temp`               | —          | °C   |
  * | Brake pressure     | `ecu_brake_pedal`                 | —          | %    |
  */
 export const TELEMETRY_SIGNALS = [
   'bcu_ts_voltage',
   'bcu_12v_voltage',
-  'placeholder_ac_current',
-  'placeholder_dti_ac_current_limit',
+  'bcu_accumulator_soc',
+  'bcu_glv_soc',
   'bcu_accumulator_current',
   'acu_hv_input_current',
-  'ecu_max_cell_temp',
-  'all_motor_temp',
-  'gr_inv_u_mosfet_temp',
+  'bcu_max_cell_temp',
+  'dti_inv_motor_temp',
+  'dti_inv_ctrl_temp',
   'ecu_brake_pedal',
 ] as const;
 
@@ -42,12 +42,18 @@ export const TELEMETRY_SIGNALS = [
 type Threshold = { warnAt: number; critAt: number };
 type ColorTier = 'ok' | 'warn' | 'crit' | 'unknown' | 'stale';
 
-/** Returns the color tier for a given value and its thresholds. */
-function tier(value: number | undefined, t: Threshold): ColorTier {
+/** Returns the color tier for a given value and its thresholds.
+ *  Lower values are worse by default. Set `invert: true` on a tile
+ *  when higher values are worse (e.g. temperature). */
+function tier(value: number | undefined, t: Threshold, invert?: boolean): ColorTier {
   if (value === undefined) return 'unknown';
-  const abs = Math.abs(value);
-  if (abs >= t.critAt) return 'crit';
-  if (abs >= t.warnAt) return 'warn';
+  if (invert) {
+    if (value >= t.critAt) return 'crit';
+    if (value >= t.warnAt) return 'warn';
+    return 'ok';
+  }
+  if (value <= t.critAt) return 'crit';
+  if (value <= t.warnAt) return 'warn';
   return 'ok';
 }
 
@@ -60,8 +66,11 @@ interface TileDef {
   unit: string;
   /** How many decimal places to show. */
   decimals: number;
-  /** Thresholds for background colouring. warnAt → yellow, critAt → red. */
+  /** Thresholds for background colouring. warnAt → yellow, critAt → red.
+   *  Lower values are worse by default, so critAt should be the smaller
+   *  number. Set `invert: true` when higher values are worse. */
   threshold: Threshold;
+  invert?: boolean;
 }
 
 const TILES: TileDef[] = [
@@ -77,63 +86,65 @@ const TILES: TileDef[] = [
     label: 'GLV',
     unit: 'V',
     decimals: 1,
-    threshold: { warnAt: 1.5, critAt: 2.5 },
+    threshold: { warnAt: 15, critAt: 12 },
   },
   {
-    signal: 'placeholder_ac_current',
-    label: 'AC CURR',
-    unit: 'A',
+    signal: 'bcu_accumulator_soc',
+    label: 'TS SOC',
+    unit: '%',
     decimals: 0,
-    threshold: { warnAt: 999, critAt: 9999 },
+    threshold: { warnAt: 20, critAt: 10 },
   },
   {
-    signal: 'placeholder_dti_ac_current_limit',
-    label: 'DTI AC LIM',
-    unit: 'A',
+    signal: 'bcu_glv_soc',
+    label: 'GLV SOC',
+    unit: '%',
     decimals: 0,
-    threshold: { warnAt: 999, critAt: 9999 },
+    threshold: { warnAt: 20, critAt: 10 },
   },
   {
     signal: 'bcu_accumulator_current',
     label: 'TS CURR',
     unit: 'A',
     decimals: 1,
-    threshold: { warnAt: 100, critAt: 200 },
+    threshold: { warnAt: 200, critAt: 100 },
   },
   {
     signal: 'acu_hv_input_current',
     label: 'DC-DC CURR',
     unit: 'A',
     decimals: 1,
-    threshold: { warnAt: 15, critAt: 40 },
+    threshold: { warnAt: 40, critAt: 15 },
   },
   {
-    signal: 'ecu_max_cell_temp',
+    signal: 'bcu_max_cell_temp',
     label: 'BATT TEMP',
     unit: '°C',
     decimals: 1,
-    threshold: { warnAt: 45, critAt: 55 },
+    threshold: { warnAt: 55, critAt: 45 },
   },
   {
-    signal: 'all_motor_temp',
-    label: 'MOTOR',
+    signal: 'dti_inv_motor_temp',
+    label: 'MOTOR TEMP',
     unit: '°C',
     decimals: 1,
     threshold: { warnAt: 60, critAt: 85 },
+    invert: true,
   },
   {
-    signal: 'gr_inv_u_mosfet_temp',
-    label: 'INV MOSFET',
+    signal: 'dti_inv_ctrl_temp',
+    label: 'INV TEMP',
     unit: '°C',
     decimals: 1,
-    threshold: { warnAt: 50, critAt: 75 },
+    threshold: { warnAt: 60, critAt: 75 },
+    invert: true,
   },
   {
     signal: 'ecu_brake_pedal',
     label: 'BRAKE',
     unit: '%',
     decimals: 0,
-    threshold: { warnAt: 25, critAt: 60 },
+    threshold: { warnAt: 60, critAt: 25 },
   },
 ];
 
@@ -152,15 +163,6 @@ function tierClasses(t: ColorTier): string {
     case 'stale':
       return 'border-neutral-925 bg-neutral-950 text-neutral-700';
   }
-}
-
-/** Compute voltage deviation tier for GLV: we want ~13V nominal. */
-function glvTier(v: number | undefined): ColorTier {
-  if (v === undefined) return 'unknown';
-  const d = Math.abs(v - 13);
-  if (d > 2.5) return 'crit';
-  if (d > 1.5) return 'warn';
-  return 'ok';
 }
 
 /** Compute voltage tier for TS: we want 300–600V band. */
@@ -183,12 +185,10 @@ function TelemetryTile({ def, value }: { def: TileDef; value: number | undefined
   let t: ColorTier;
   if (stale) {
     t = 'stale';
-  } else if (def.signal === 'bcu_12v_voltage') {
-    t = glvTier(value);
   } else if (def.signal === 'bcu_ts_voltage') {
     t = tsVoltageTier(value);
   } else {
-    t = tier(value, def.threshold);
+    t = tier(value, def.threshold, def.invert);
   }
 
   const display = value !== undefined ? value.toFixed(def.decimals) : '—';
@@ -214,13 +214,13 @@ export function TelemetryPanel() {
   // Read each signal explicitly so ESLint can verify hook rules statically.
   const v00 = useSignal('bcu_ts_voltage');
   const v01 = useSignal('bcu_12v_voltage');
-  const v02 = useSignal('placeholder_ac_current');
-  const v03 = useSignal('placeholder_dti_ac_current_limit');
+  const v02 = useSignal('bcu_accumulator_soc');
+  const v03 = useSignal('bcu_glv_soc');
   const v04 = useSignal('bcu_accumulator_current');
   const v05 = useSignal('acu_hv_input_current');
-  const v06 = useSignal('ecu_max_cell_temp');
-  const v07 = useSignal('all_motor_temp');
-  const v08 = useSignal('gr_inv_u_mosfet_temp');
+  const v06 = useSignal('bcu_max_cell_temp');
+  const v07 = useSignal('dti_inv_motor_temp');
+  const v08 = useSignal('dti_inv_ctrl_temp');
   const v09 = useSignal('ecu_brake_pedal');
   const values = [v00, v01, v02, v03, v04, v05, v06, v07, v08, v09];
 
