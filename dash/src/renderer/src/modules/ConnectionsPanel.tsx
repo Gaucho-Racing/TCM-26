@@ -263,9 +263,7 @@ export function ConnectionsPanel() {
           space the old "GR26" badge used to take. */}
       <div className="flex items-baseline justify-between">
         <SectionTitle>Status</SectionTitle>
-        <span className="text-base font-bold tracking-[0.3em] text-neutral-400">
-          {VEHICLE_ID.toUpperCase()}
-        </span>
+        <span className="font-mono text-base font-bold text-neutral-400">{VEHICLE_ID}</span>
       </div>
       <div className="flex flex-col gap-1">
         <ConnRow label="LOCAL" status={localStatus} value={localValue} />
