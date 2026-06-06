@@ -15,15 +15,6 @@ function formatUTCTime(d: Date): string {
   return d.toISOString().slice(11, 19);
 }
 
-function TimeChip({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="flex items-baseline gap-1.5">
-      <span className="text-xs font-bold tracking-widest text-neutral-600">{label}</span>
-      <span className="font-mono text-sm font-bold text-neutral-300 tabular-nums">{value}</span>
-    </span>
-  );
-}
-
 // ── Constants ────────────────────────────────────────────────────────
 
 // LOCAL pill threshold. WS open + last signal under STALE_MS → green;
@@ -270,21 +261,29 @@ export function ConnectionsPanel() {
       <SectionTitle>Status</SectionTitle>
       <ConnRow label="LOCAL" status={localStatus} value={localValue} />
       <ConnRow label="MAPACHE" status={mapache.status} value={mapache.value} />
-      <div className="flex items-center justify-evenly pt-1">
-        <StatusLight icon={<WifiIcon />} status={inet.status} />
-        <StatusLight icon={<RadioTowerIcon />} status={mqtt.status} />
-        <StatusLight icon={<MountainIcon />} status={shelterStatus} />
-        <StatusLight icon={<ClockIcon />} status={clock.status} />
-      </div>
-      {/* Identity + wall clock — slim footer so the dash always shows
-          which car this is and what time the dash thinks it is. */}
-      <div className="flex items-baseline justify-between gap-2 border-t border-neutral-800 pt-2">
-        <span className="text-sm font-bold tracking-widest text-neutral-400">
-          {VEHICLE_ID.toUpperCase()}
-        </span>
-        <div className="flex items-baseline gap-3">
-          <TimeChip label="LOCAL" value={formatLocalTime(new Date(now))} />
-          <TimeChip label="UTC" value={formatUTCTime(new Date(now))} />
+      {/* Identity + wall clock stacked on the left; status lights tucked
+          to the right. One combined row so the dash always shows which
+          car this is, what time it thinks it is, and the per-bit health
+          of the TCM Status pipeline at a glance. */}
+      <div className="flex items-center justify-between gap-3 border-t border-neutral-800 pt-2">
+        <div className="grid grid-cols-[auto_auto] items-baseline gap-x-2 gap-y-0.5">
+          <span className="col-span-2 text-base font-black tracking-[0.3em] text-neutral-300">
+            {VEHICLE_ID.toUpperCase()}
+          </span>
+          <span className="text-xs font-bold tracking-widest text-neutral-600">LOCAL</span>
+          <span className="font-mono text-sm font-bold text-neutral-300 tabular-nums">
+            {formatLocalTime(new Date(now))}
+          </span>
+          <span className="text-xs font-bold tracking-widest text-neutral-600">UTC</span>
+          <span className="font-mono text-sm font-bold text-neutral-300 tabular-nums">
+            {formatUTCTime(new Date(now))}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <StatusLight icon={<WifiIcon />} status={inet.status} />
+          <StatusLight icon={<RadioTowerIcon />} status={mqtt.status} />
+          <StatusLight icon={<MountainIcon />} status={shelterStatus} />
+          <StatusLight icon={<ClockIcon />} status={clock.status} />
         </div>
       </div>
     </div>
