@@ -31,6 +31,7 @@ export function PowerOverlay() {
   const [displayValue, setDisplayValue] = useState(value);
   const prevRef = useRef(value);
   const mountedRef = useRef(false);
+  const overlayUpRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -49,9 +50,12 @@ export function PowerOverlay() {
 
       // Reset the hide timer — overlay stays up for 2 s from *this* change.
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = setTimeout(() => setVisible(false), VISIBLE_DURATION_MS);
+      hideTimerRef.current = setTimeout(() => {
+        setVisible(false);
+        overlayUpRef.current = false;
+      }, VISIBLE_DURATION_MS);
 
-      if (visible) {
+      if (overlayUpRef.current) {
         // Overlay is already up — debounce the number update so rapid
         // changes (e.g. 5 messages in 0.5 s) don't flicker through every
         // intermediate value. Only the final settled value is shown.
@@ -61,6 +65,7 @@ export function PowerOverlay() {
         // Overlay is hidden — show the first change immediately (no lag).
         setDisplayValue(mapped);
         setVisible(true);
+        overlayUpRef.current = true;
       }
     }
 
