@@ -78,12 +78,12 @@ const LIGHT_TILE: Record<ConnStatus, string> = {
 /** Compact connection row — colored dot + label + value, all on one line. */
 function ConnRow({ label, status, value }: { label: string; status: ConnStatus; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-2 text-xl">
+    <div className="flex items-center justify-between gap-2 text-lg">
       <div className="flex items-center gap-2">
-        <span className={`h-3.5 w-3.5 rounded-full ${STATUS_DOT[status]}`} />
+        <span className={`h-3 w-3 rounded-full ${STATUS_DOT[status]}`} />
         <span className="font-bold tracking-widest text-neutral-300">{label}</span>
       </div>
-      <span className={`font-mono text-lg font-bold tabular-nums ${STATUS_TEXT[status]}`}>
+      <span className={`font-mono text-base font-bold tabular-nums ${STATUS_TEXT[status]}`}>
         {value}
       </span>
     </div>
