@@ -258,18 +258,22 @@ export function ConnectionsPanel() {
 
   return (
     <div className="flex min-h-0 flex-col gap-2 rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 px-3 py-2">
-      <SectionTitle>Status</SectionTitle>
+      {/* Title + vehicle id share the header row so the bottom block
+          can be just the clocks + status lights. Frees up the vertical
+          space the old "GR26" badge used to take. */}
+      <div className="flex items-baseline justify-between">
+        <SectionTitle>Status</SectionTitle>
+        <span className="text-base font-bold tracking-[0.3em] text-neutral-400">
+          {VEHICLE_ID.toUpperCase()}
+        </span>
+      </div>
       <ConnRow label="LOCAL" status={localStatus} value={localValue} />
       <ConnRow label="MAPACHE" status={mapache.status} value={mapache.value} />
-      {/* Identity + wall clock stacked on the left; status lights tucked
-          to the right. One combined row so the dash always shows which
-          car this is, what time it thinks it is, and the per-bit health
-          of the TCM Status pipeline at a glance. */}
+      {/* Wall clocks stacked on the left; status lights tucked to the
+          right. items-center vertically balances the two-line clock
+          block with the 48px icon tiles. */}
       <div className="flex items-center justify-between gap-3 border-t border-neutral-800 pt-2">
         <div className="grid grid-cols-[auto_auto] items-baseline gap-x-2 gap-y-0.5">
-          <span className="col-span-2 text-base font-black tracking-[0.3em] text-neutral-300">
-            {VEHICLE_ID.toUpperCase()}
-          </span>
           <span className="text-xs font-bold tracking-widest text-neutral-600">LOCAL</span>
           <span className="font-mono text-sm font-bold text-neutral-300 tabular-nums">
             {formatLocalTime(new Date(now))}
