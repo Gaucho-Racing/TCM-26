@@ -8,8 +8,5 @@ export { TelemetryPanel, TELEMETRY_SIGNALS } from './TelemetryPanel';
 export { APPSPanel, APPS_SIGNALS } from './APPSPanel';
 export { CurrentPanel } from './CurrentPanel';
 export { SectionTitle } from './SectionTitle';
-<<<<<<< Updated upstream
 export { ToastContainer } from './ToastContainer';
-=======
 export { PowerOverlay } from './PowerOverlay';
->>>>>>> Stashed changes

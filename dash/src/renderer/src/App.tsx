@@ -7,11 +7,8 @@ import {
   TELEMETRY_SIGNALS,
   APPS_SIGNALS,
   APPSPanel,
-<<<<<<< Updated upstream
   ToastContainer,
-=======
   PowerOverlay,
->>>>>>> Stashed changes
 } from './modules';
 
 const SUBSCRIBED_SIGNALS = [
@@ -66,11 +63,8 @@ export default function App() {
       <LeftColumn />
       <SpeedPanel />
       <RightColumn />
-<<<<<<< Updated upstream
       <ToastContainer />
-=======
       <PowerOverlay />
->>>>>>> Stashed changes
     </div>
   );
 }
