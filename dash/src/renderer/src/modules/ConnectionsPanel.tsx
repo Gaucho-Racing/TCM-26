@@ -267,12 +267,14 @@ export function ConnectionsPanel() {
           {VEHICLE_ID.toUpperCase()}
         </span>
       </div>
-      <ConnRow label="LOCAL" status={localStatus} value={localValue} />
-      <ConnRow label="MAPACHE" status={mapache.status} value={mapache.value} />
+      <div className="flex flex-col gap-1">
+        <ConnRow label="LOCAL" status={localStatus} value={localValue} />
+        <ConnRow label="MAPACHE" status={mapache.status} value={mapache.value} />
+      </div>
       {/* Wall clocks stacked on the left; status lights tucked to the
           right. items-center vertically balances the two-line clock
           block with the 48px icon tiles. */}
-      <div className="flex items-center justify-between gap-3 border-t border-neutral-800 pt-2">
+      <div className="flex items-center justify-between gap-3">
         <div className="grid grid-cols-[auto_auto] items-baseline gap-x-2 gap-y-0.5">
           <span className="text-xs font-bold tracking-widest text-neutral-600">LOCAL</span>
           <span className="font-mono text-sm font-bold text-neutral-300 tabular-nums">
