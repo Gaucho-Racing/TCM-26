@@ -75,7 +75,7 @@ for (let mph = 0; mph <= MAX_SPEED; mph += 5) {
 
 export function SpeedPanel() {
   const speed = useSignal('dti_erpm');
-  const mph = speed * 0.00121429 * 10;
+  const mph = speed * 0.01706;
   const clamped = Math.max(0, Math.min(MAX_SPEED, mph));
   const frac = clamped / MAX_SPEED;
   const needleDeg = START_DEG + frac * SWEEP_DEG;
