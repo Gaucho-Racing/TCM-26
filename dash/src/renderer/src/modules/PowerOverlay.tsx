@@ -9,10 +9,6 @@ import { useSignal } from '../store/signals';
 /** How long the overlay stays visible after the last power-level change. */
 const VISIBLE_DURATION_MS = 2000;
 
-/** Debounce window — rapid changes within this window coalesce into
- *  a single display update so the number doesn't flicker. */
-const DEBOUNCE_MS = 150;
-
 /** Maps `ecu_power_level` (0–5) to the displayed kW value. */
 const POWER_LEVEL_MAP: Record<number, number> = {
   0: 50,
@@ -33,7 +29,6 @@ export function PowerOverlay() {
   const mountedRef = useRef(false);
   const overlayUpRef = useRef(false);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     // Skip the initial mount so the overlay doesn't fire just because
@@ -48,22 +43,20 @@ export function PowerOverlay() {
       const mapped = POWER_LEVEL_MAP[value] ?? value;
       prevRef.current = value;
 
-      // Reset the hide timer — overlay stays up for 2 s from *this* change.
+      // Always update the displayed value immediately — Zustand's
+      // selector already suppresses re-renders when the raw value
+      // hasn't changed, so there's no flicker from repeated signals.
+      setDisplayValue(mapped);
+
+      // Reset the hide timer — overlay stays up for 2 s from
+      // *this* change. If it wasn't visible yet, show it now.
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       hideTimerRef.current = setTimeout(() => {
         setVisible(false);
         overlayUpRef.current = false;
       }, VISIBLE_DURATION_MS);
 
-      if (overlayUpRef.current) {
-        // Overlay is already up — debounce the number update so rapid
-        // changes (e.g. 5 messages in 0.5 s) don't flicker through every
-        // intermediate value. Only the final settled value is shown.
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => setDisplayValue(mapped), DEBOUNCE_MS);
-      } else {
-        // Overlay is hidden — show the first change immediately (no lag).
-        setDisplayValue(mapped);
+      if (!overlayUpRef.current) {
         setVisible(true);
         overlayUpRef.current = true;
       }
@@ -71,7 +64,6 @@ export function PowerOverlay() {
 
     return () => {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, [value]);
 

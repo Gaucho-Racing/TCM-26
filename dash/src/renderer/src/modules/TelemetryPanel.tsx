@@ -121,7 +121,8 @@ const TILES: TileDef[] = [
     label: 'BATT TEMP',
     unit: '°C',
     decimals: 1,
-    threshold: { warnAt: 55, critAt: 45 },
+    threshold: { warnAt: 50, critAt: 60 },
+    invert: true,
   },
   {
     signal: 'dti_inv_motor_temp',

@@ -64,7 +64,7 @@ function ToastItem({ toast, dismiss }: { toast: Toast; dismiss: (id: string) => 
   );
 }
 
-// Fixed top-left stack. Newer toasts stack downward.
+// Fixed bottom-left stack. Newer toasts stack upward.
 export function ToastContainer() {
   const toasts = useToastStore((s) => s.toasts);
   const dismiss = useToastStore((s) => s.dismiss);
