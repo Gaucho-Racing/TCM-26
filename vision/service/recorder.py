@@ -32,6 +32,8 @@ def _build_cmd(cfg: Config, run_dir: str) -> tuple[list[str], str]:
         "-preset", cfg.x264_preset,
         "-tune", "zerolatency",
         "-b:v", cfg.bitrate,
+        "-maxrate", cfg.maxrate,
+        "-bufsize", cfg.bufsize,
         "-g", str(cfg.fps * 2),
         "-pix_fmt", "yuv420p",
         "-f", "segment",

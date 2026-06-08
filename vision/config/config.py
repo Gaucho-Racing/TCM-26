@@ -24,6 +24,8 @@ class Config:
     crop: str
     fps: int
     bitrate: str
+    maxrate: str
+    bufsize: str
     x264_preset: str
     segment_time: int
     output_dir: str
@@ -72,8 +74,12 @@ def load() -> Config:
         capture_format=_env("CAPTURE_FORMAT", "yuyv422"),
         capture_fps=int(_env("CAPTURE_FPS", "30")),
         crop=_env("CROP", "1280:720:0:0"),
-        fps=int(_env("FPS", "15")),
-        bitrate=_env("BITRATE", "3M"),
+        fps=int(_env("FPS", "30")),
+        bitrate=_env("BITRATE", "5M"),
+        # maxrate/bufsize cap the VBR spikes on high-motion segments so
+        # segment size (and per-segment upload time) stays bounded.
+        maxrate=_env("MAXRATE", _env("BITRATE", "5M")),
+        bufsize=_env("BUFSIZE", "10M"),
         x264_preset=_env("X264_PRESET", "superfast"),
         segment_time=int(_env("SEGMENT_TIME", "4")),
         output_dir=_env("OUTPUT_DIR", "/data"),

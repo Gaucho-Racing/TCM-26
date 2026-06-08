@@ -161,8 +161,10 @@ services:
             CAPTURE_FORMAT: yuyv422
             CAPTURE_FPS: "30"
             CROP: 1280:720:0:0
-            FPS: "15"
-            BITRATE: 3M
+            FPS: "30"
+            BITRATE: 5M
+            MAXRATE: 5M
+            BUFSIZE: 10M
             X264_PRESET: superfast
             SEGMENT_TIME: "4"
             OUTPUT_DIR: /data
