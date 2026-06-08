@@ -22,6 +22,7 @@ def _build_cmd(cfg: Config, run_dir: str) -> tuple[list[str], str]:
     list_path = os.path.join(run_dir, "segments.csv")
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "warning", "-nostdin",
+        "-progress", "pipe:1", "-nostats",
         "-f", "v4l2",
         "-input_format", cfg.capture_format,
         "-video_size", cfg.capture_size,
@@ -55,6 +56,38 @@ def _build_cmd(cfg: Config, run_dir: str) -> tuple[list[str], str]:
 def _drain_stderr(proc: subprocess.Popen) -> None:
     for line in iter(proc.stderr.readline, b""):
         logger.warning(f"ffmpeg: {line.decode(errors='replace').rstrip()}")
+
+
+def _log_progress(proc: subprocess.Popen, cfg: Config) -> None:
+    """Parse ffmpeg's -progress stream and emit a throttled health line. The
+    headline is `speed`: < 1.0x means software encode can't keep up with the
+    camera in realtime and capture frames are being dropped — the one-glance
+    on-car check that 720p@{fps} fits the Orin Nano's CPU alongside the dash."""
+    fields: dict[str, str] = {}
+    last_log = 0.0
+    for raw in iter(proc.stdout.readline, b""):
+        key, _, val = raw.decode(errors="replace").strip().partition("=")
+        if not _:
+            continue
+        fields[key] = val
+        if key != "progress":
+            continue
+        now = time.monotonic()
+        if val != "end" and now - last_log < 10:
+            continue
+        last_log = now
+        speed = fields.get("speed", "?")
+        behind = ""
+        try:
+            if float(speed.rstrip("x")) < 0.97:
+                behind = "  <-- BEHIND REALTIME (dropping capture frames)"
+        except ValueError:
+            pass
+        logger.info(
+            f"encode: speed={speed} fps={fields.get('fps', '?')}/{cfg.fps} "
+            f"frame={fields.get('frame', '?')} drop={fields.get('drop_frames', '0')} "
+            f"dup={fields.get('dup_frames', '0')}{behind}"
+        )
 
 
 def _consume_segments(
@@ -121,17 +154,34 @@ def _consume_segments(
 def start_recorder(cfg: Config, status: VisionStatus) -> None:
     def run() -> None:
         while True:
+            # No camera (not enumerated yet at boot, unplugged, or non-Jetson
+            # host): back off and retry instead of spawning ffmpeg against a
+            # missing node. The uploader keeps draining any backlog, and the
+            # heartbeat reports recording=False so the cloud can see it.
+            if not os.path.exists(cfg.device):
+                logger.warning(
+                    f"camera device {cfg.device} not present; retrying in "
+                    f"{cfg.error_backoff}s"
+                )
+                time.sleep(cfg.error_backoff)
+                continue
+
             run_dir = os.path.join(cfg.output_dir, f"run_{ulid.make()}")
             os.makedirs(run_dir, exist_ok=True)
             cmd, list_path = _build_cmd(cfg, run_dir)
             logger.info(f"starting capture: {cfg.device} -> {run_dir}")
             try:
                 proc = subprocess.Popen(
-                    cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
+                    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
                 )
                 status.set(recording=True)
                 threading.Thread(
-                    target=_drain_stderr, args=(proc,), daemon=True
+                    target=_drain_stderr, args=(proc,), daemon=True,
+                    name="vision-ffmpeg-stderr",
+                ).start()
+                threading.Thread(
+                    target=_log_progress, args=(proc, cfg), daemon=True,
+                    name="vision-ffmpeg-progress",
                 ).start()
                 _consume_segments(cfg, run_dir, list_path, proc, status)
                 rc = proc.wait()
