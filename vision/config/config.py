@@ -1,0 +1,91 @@
+import os
+from dataclasses import dataclass
+from urllib.parse import quote
+
+
+@dataclass(frozen=True)
+class Config:
+    env: str
+    pg_uri: str
+    vehicle_id: str
+
+    s3_uri: str
+    s3_region: str
+    aws_access_key_id: str
+    aws_secret_access_key: str
+
+    # Capture / encode. Defaults assume a USB (UVC) ZED in HD720: the camera
+    # exposes a single side-by-side frame (2*1280 x 720), so we crop the left
+    # eye and software-encode it (the Orin Nano has no NVENC).
+    device: str
+    capture_size: str
+    capture_format: str
+    capture_fps: int
+    crop: str
+    fps: int
+    bitrate: str
+    x264_preset: str
+    segment_time: int
+    output_dir: str
+
+    # Upload. Only run over an unmetered link — video is far too large for
+    # the cellular modem, so uploads are gated to these interfaces.
+    upload_ifaces: tuple[str, ...]
+    upload_batch: int
+    max_local_bytes: int
+    idle_sleep: float
+    error_backoff: float
+    startup_delay: float
+
+    log_level: str
+    virtual_can_port: int
+    heartbeat_interval: float
+
+
+_ENV_LOG_LEVEL = {"DEV": "DEBUG", "PROD": "INFO"}
+
+
+def _env(name: str, default: str | None = None) -> str:
+    val = os.environ.get(name, default)
+    if val is None:
+        raise RuntimeError(f"missing required env var: {name}")
+    return val
+
+
+def load() -> Config:
+    env = _env("ENV", "PROD")
+    return Config(
+        env=env,
+        pg_uri=(
+            f"postgresql://{quote(_env('DATABASE_USER'), safe='')}"
+            f":{quote(_env('DATABASE_PASSWORD'), safe='')}"
+            f"@{_env('DATABASE_HOST')}:{_env('DATABASE_PORT', '5432')}"
+            f"/{_env('DATABASE_NAME')}"
+        ),
+        vehicle_id=_env("VEHICLE_ID"),
+        s3_uri=_env("S3_URI"),
+        s3_region=_env("S3_REGION", "us-west-2"),
+        aws_access_key_id=_env("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=_env("AWS_SECRET_ACCESS_KEY"),
+        device=_env("DEVICE", "/dev/video0"),
+        capture_size=_env("CAPTURE_SIZE", "2560x720"),
+        capture_format=_env("CAPTURE_FORMAT", "yuyv422"),
+        capture_fps=int(_env("CAPTURE_FPS", "30")),
+        crop=_env("CROP", "1280:720:0:0"),
+        fps=int(_env("FPS", "15")),
+        bitrate=_env("BITRATE", "3M"),
+        x264_preset=_env("X264_PRESET", "superfast"),
+        segment_time=int(_env("SEGMENT_TIME", "4")),
+        output_dir=_env("OUTPUT_DIR", "/data"),
+        upload_ifaces=tuple(
+            i.strip() for i in _env("UPLOAD_IFACES", "wlan0,eth0").split(",") if i.strip()
+        ),
+        upload_batch=int(_env("UPLOAD_BATCH", "32")),
+        max_local_bytes=int(_env("MAX_LOCAL_BYTES", str(20 * 1024**3))),
+        idle_sleep=float(_env("IDLE_SLEEP", "30")),
+        error_backoff=float(_env("ERROR_BACKOFF", "60")),
+        startup_delay=float(_env("STARTUP_DELAY", "10")),
+        log_level=_ENV_LOG_LEVEL.get(env.upper(), "INFO"),
+        virtual_can_port=int(_env("VIRTUAL_CAN_PORT", "8100")),
+        heartbeat_interval=float(_env("HEARTBEAT_INTERVAL", "5")),
+    )
