@@ -30,10 +30,15 @@ def _build_cmd(cfg: Config, run_dir: str) -> tuple[list[str], str]:
         "-filter:v", f"crop={cfg.crop},fps={cfg.fps}",
         "-c:v", "libx264",
         "-preset", cfg.x264_preset,
-        "-tune", "zerolatency",
         "-b:v", cfg.bitrate,
         "-maxrate", cfg.maxrate,
         "-bufsize", cfg.bufsize,
+        # Pin a keyframe at each segment boundary so every segment starts
+        # independently seekable and runs ~segment_time (the first GOP with
+        # B-frames runs a bit long — harmless, we record each segment's true
+        # duration from the csv and HLS carries per-segment EXTINF). -g adds a
+        # mid-segment keyframe for snappier scrubbing.
+        "-force_key_frames", f"expr:gte(t,n_forced*{cfg.segment_time})",
         "-g", str(cfg.fps * 2),
         "-pix_fmt", "yuv420p",
         "-f", "segment",

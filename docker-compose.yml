@@ -165,7 +165,7 @@ services:
             BITRATE: 5M
             MAXRATE: 5M
             BUFSIZE: 10M
-            X264_PRESET: superfast
+            X264_PRESET: veryfast
             SEGMENT_TIME: "4"
             OUTPUT_DIR: /data
             UPLOAD_IFACES: wlan0,eth0

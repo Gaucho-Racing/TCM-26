@@ -80,7 +80,7 @@ def load() -> Config:
         # segment size (and per-segment upload time) stays bounded.
         maxrate=_env("MAXRATE", _env("BITRATE", "5M")),
         bufsize=_env("BUFSIZE", "10M"),
-        x264_preset=_env("X264_PRESET", "superfast"),
+        x264_preset=_env("X264_PRESET", "veryfast"),
         segment_time=int(_env("SEGMENT_TIME", "4")),
         output_dir=_env("OUTPUT_DIR", "/data"),
         upload_ifaces=tuple(
