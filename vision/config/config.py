@@ -25,6 +25,11 @@ class Config:
     device: str
     camera_match: str
     allow_any_camera: bool
+    # capture_backend: v4l2 (on-car), test (lavfi synthetic source — runs
+    # anywhere, exercises the full encode/segment/upload path), or avfoundation
+    # (native Mac webcam when running the service outside Docker).
+    capture_backend: str
+    av_device: str
     capture_size: str
     capture_format: str
     capture_fps: int
@@ -38,8 +43,11 @@ class Config:
     output_dir: str
 
     # Upload. Only run over an unmetered link — video is far too large for
-    # the cellular modem, so uploads are gated to these interfaces.
+    # the cellular modem, so uploads are gated to these interfaces. The gate
+    # reads /sys/class/net, so disable it (upload_require_unmetered=false) for
+    # local testing on a Mac.
     upload_ifaces: tuple[str, ...]
+    upload_require_unmetered: bool
     upload_batch: int
     max_local_bytes: int
     idle_sleep: float
@@ -80,6 +88,8 @@ def load() -> Config:
         camera_match=_env("CAMERA_MATCH", "ZED"),
         allow_any_camera=_env("ALLOW_ANY_CAMERA", "true").lower()
         in ("1", "true", "yes", "on"),
+        capture_backend=_env("CAPTURE_BACKEND", "v4l2"),
+        av_device=_env("AV_DEVICE", "0"),
         capture_size=_env("CAPTURE_SIZE", "2560x720"),
         capture_format=_env("CAPTURE_FORMAT", "yuyv422"),
         capture_fps=int(_env("CAPTURE_FPS", "30")),
@@ -96,6 +106,8 @@ def load() -> Config:
         upload_ifaces=tuple(
             i.strip() for i in _env("UPLOAD_IFACES", "wlan0,eth0").split(",") if i.strip()
         ),
+        upload_require_unmetered=_env("UPLOAD_REQUIRE_UNMETERED", "true").lower()
+        in ("1", "true", "yes", "on"),
         upload_batch=int(_env("UPLOAD_BATCH", "32")),
         max_local_bytes=int(_env("MAX_LOCAL_BYTES", str(20 * 1024**3))),
         idle_sleep=float(_env("IDLE_SLEEP", "30")),

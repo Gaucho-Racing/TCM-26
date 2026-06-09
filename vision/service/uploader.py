@@ -59,9 +59,13 @@ def enforce_local_budget(cfg: Config) -> None:
 
 
 def run_once(cfg: Config, s3, status: VisionStatus) -> bool:
-    if not (on_unmetered_network(cfg.upload_ifaces) and internet_up()):
+    if cfg.upload_require_unmetered and not on_unmetered_network(cfg.upload_ifaces):
         status.set(upload=UploadState.GATED)
         logger.info("upload gated: no unmetered network")
+        return False
+    if not internet_up():
+        status.set(upload=UploadState.GATED)
+        logger.info("upload gated: no internet")
         return False
 
     claim_id = int(time.time() * 1000)
