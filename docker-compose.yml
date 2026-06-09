@@ -133,15 +133,19 @@ services:
             context: ./vision
             dockerfile: Dockerfile.dev
         network_mode: host
-        # The ZED enumerates as a UVC device. On non-Jetson hosts (or with no
-        # camera attached) ffmpeg fails to open it and the recorder loops on
-        # its backoff — harmless, the uploader still drains any backlog. The
-        # prod stack in jetson-infra sets `restart: always`.
-        devices:
-            - "/dev/video0:/dev/video0"
+        # The ZED enumerates as a UVC device. Camera discovery scans
+        # /dev/video* (see vision/service/recorder.py), so grant the whole
+        # v4l2 device class (char major 81) and expose the nodes — that way the
+        # ZED is found at whatever index it enumerates, plus any fallback
+        # camera. On non-Jetson hosts (or with no camera) the recorder just
+        # loops on its backoff — harmless, the uploader still drains any
+        # backlog. The prod stack in jetson-infra sets `restart: always`.
+        device_cgroup_rules:
+            - "c 81:* rmw"
         volumes:
             - ./vision:/app
             - vision_data:/data
+            - /dev:/dev
         environment:
             ENV: "DEV"
             VEHICLE_ID: ${VEHICLE_ID}
@@ -154,7 +158,12 @@ services:
             S3_REGION: us-west-2
             AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
             AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-            DEVICE: /dev/video0
+            # Leave DEVICE empty to auto-discover: match CAMERA_MATCH by v4l2
+            # name across /dev/video*, then fall back to any capture device.
+            # Set DEVICE to pin a specific node and skip discovery.
+            DEVICE: ""
+            CAMERA_MATCH: ZED
+            ALLOW_ANY_CAMERA: "true"
             # ZED HD720 side-by-side (2*1280 x 720); crop the left eye. The
             # Orin Nano has no NVENC, so encode is software x264.
             CAPTURE_SIZE: 2560x720

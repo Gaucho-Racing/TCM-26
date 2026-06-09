@@ -2,6 +2,7 @@ import os
 import subprocess
 import threading
 import time
+from glob import glob
 
 import ulid
 from loguru import logger
@@ -11,24 +12,82 @@ from database.db import insert_segment
 from service.net import clock_plausible
 from service.state import VisionStatus
 
+# A bad device (dead node, or a metadata-only node that isn't a video capture
+# device) makes ffmpeg exit within a second or two. If ffmpeg is still alive
+# after this grace window we treat the candidate as good and commit to it.
+STARTUP_GRACE_SEC = 3.0
+
 
 def _crop_dims(crop: str) -> tuple[int, int]:
     w, h = crop.split(":")[:2]
     return int(w), int(h)
 
 
-def _build_cmd(cfg: Config, run_dir: str) -> tuple[list[str], str]:
+def _v4l2_name(idx: int) -> str:
+    try:
+        with open(f"/sys/class/video4linux/video{idx}/name") as f:
+            return f.read().strip()
+    except OSError:
+        return ""
+
+
+def discover_devices(cfg: Config) -> list[tuple[str, bool, str]]:
+    """Ordered capture candidates as (device, stereo, name). An explicit DEVICE
+    overrides discovery. Otherwise we enumerate /dev/video*, putting name-matched
+    (ZED) nodes first and using their stereo geometry; remaining cameras follow
+    as generic fallbacks (no stereo crop) when ALLOW_ANY_CAMERA is set."""
+    if cfg.device:
+        return [(cfg.device, True, "explicit")] if os.path.exists(cfg.device) else []
+
+    indices = []
+    for path in glob("/sys/class/video4linux/video*"):
+        try:
+            indices.append(int(path.rsplit("video", 1)[1]))
+        except ValueError:
+            continue
+    indices.sort()
+
+    match = cfg.camera_match.lower()
+    zed: list[tuple[str, bool, str]] = []
+    other: list[tuple[str, bool, str]] = []
+    for idx in indices:
+        dev = f"/dev/video{idx}"
+        name = _v4l2_name(idx)
+        if match and match in name.lower():
+            zed.append((dev, True, name))
+        else:
+            other.append((dev, False, name))
+
+    return zed + other if cfg.allow_any_camera else zed
+
+
+def _build_cmd(
+    cfg: Config, run_dir: str, device: str, stereo: bool
+) -> tuple[list[str], str]:
     seg_pattern = os.path.join(run_dir, "seg_%05d.ts")
     list_path = os.path.join(run_dir, "segments.csv")
+    if stereo:
+        # ZED side-by-side frame: fix the capture format/size and crop the left
+        # eye.
+        input_args = [
+            "-f", "v4l2",
+            "-input_format", cfg.capture_format,
+            "-video_size", cfg.capture_size,
+            "-framerate", str(cfg.capture_fps),
+            "-i", device,
+        ]
+        vf = f"crop={cfg.crop},fps={cfg.fps}"
+    else:
+        # Unknown fallback camera: let the device negotiate its native format
+        # and scale to 720p (even width), no stereo crop.
+        input_args = ["-f", "v4l2", "-i", device]
+        vf = f"fps={cfg.fps},scale=-2:720"
+
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "warning", "-nostdin",
         "-progress", "pipe:1", "-nostats",
-        "-f", "v4l2",
-        "-input_format", cfg.capture_format,
-        "-video_size", cfg.capture_size,
-        "-framerate", str(cfg.capture_fps),
-        "-i", cfg.device,
-        "-filter:v", f"crop={cfg.crop},fps={cfg.fps}",
+        *input_args,
+        "-filter:v", vf,
         "-c:v", "libx264",
         "-preset", cfg.x264_preset,
         "-b:v", cfg.bitrate,
@@ -91,7 +150,13 @@ def _log_progress(proc: subprocess.Popen, cfg: Config) -> None:
 
 
 def _consume_segments(
-    cfg: Config, run_dir: str, list_path: str, proc: subprocess.Popen, status: VisionStatus
+    cfg: Config,
+    run_dir: str,
+    list_path: str,
+    proc: subprocess.Popen,
+    status: VisionStatus,
+    width: int,
+    height: int,
 ) -> None:
     """Tail ffmpeg's segment list. Each line (filename,start,end in stream
     seconds) is written when a segment is finalized. We anchor stream-time 0
@@ -99,7 +164,6 @@ def _consume_segments(
     which absorbs camera/pipeline startup latency. Per-segment offsets come
     from ffmpeg's own timestamps, so dropped frames never desync the
     timeline (no constant-fps assumption)."""
-    width, height = _crop_dims(cfg.crop)
     anchor_us: int | None = None
 
     while not os.path.exists(list_path):
@@ -151,45 +215,72 @@ def _consume_segments(
             logger.debug(f"recorded segment {os.path.basename(path)} ({size} B)")
 
 
+def _run_candidate(
+    cfg: Config, device: str, stereo: bool, name: str, status: VisionStatus
+) -> bool:
+    """Start ffmpeg on one device. Returns True if it started and we ran it to
+    exit (caller should re-discover), False if it failed startup (try next)."""
+    run_dir = os.path.join(cfg.output_dir, f"run_{ulid.make()}")
+    os.makedirs(run_dir, exist_ok=True)
+    cmd, list_path = _build_cmd(cfg, run_dir, device, stereo)
+    mode = "ZED stereo, left-eye crop" if stereo else f"generic 720p ({name or 'unknown'})"
+    logger.info(f"trying capture: {device} [{mode}]")
+
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except Exception as e:
+        logger.error(f"spawn failed for {device}: {e}")
+        return False
+
+    threading.Thread(
+        target=_drain_stderr, args=(proc,), daemon=True, name="vision-ffmpeg-stderr"
+    ).start()
+
+    time.sleep(STARTUP_GRACE_SEC)
+    if proc.poll() is not None:
+        logger.warning(
+            f"{device} failed to start (rc={proc.returncode}); trying next candidate"
+        )
+        return False
+
+    logger.info(f"capturing from {device} [{mode}] -> {run_dir}")
+    status.set(recording=True)
+    threading.Thread(
+        target=_log_progress, args=(proc, cfg), daemon=True, name="vision-ffmpeg-progress"
+    ).start()
+    width, height = _crop_dims(cfg.crop) if stereo else (0, 720)
+    try:
+        _consume_segments(cfg, run_dir, list_path, proc, status, width, height)
+        rc = proc.wait()
+        logger.error(f"ffmpeg exited (rc={rc}); re-discovering after backoff")
+    finally:
+        status.set(recording=False)
+    return True
+
+
 def start_recorder(cfg: Config, status: VisionStatus) -> None:
     def run() -> None:
         while True:
-            # No camera (not enumerated yet at boot, unplugged, or non-Jetson
-            # host): back off and retry instead of spawning ffmpeg against a
-            # missing node. The uploader keeps draining any backlog, and the
-            # heartbeat reports recording=False so the cloud can see it.
-            if not os.path.exists(cfg.device):
+            candidates = discover_devices(cfg)
+            if not candidates:
                 logger.warning(
-                    f"camera device {cfg.device} not present; retrying in "
-                    f"{cfg.error_backoff}s"
+                    f"no camera found (device='{cfg.device}', match='{cfg.camera_match}', "
+                    f"allow_any={cfg.allow_any_camera}); retrying in {cfg.error_backoff}s"
                 )
                 time.sleep(cfg.error_backoff)
                 continue
 
-            run_dir = os.path.join(cfg.output_dir, f"run_{ulid.make()}")
-            os.makedirs(run_dir, exist_ok=True)
-            cmd, list_path = _build_cmd(cfg, run_dir)
-            logger.info(f"starting capture: {cfg.device} -> {run_dir}")
-            try:
-                proc = subprocess.Popen(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            started = False
+            for device, stereo, name in candidates:
+                if _run_candidate(cfg, device, stereo, name, status):
+                    started = True
+                    break
+
+            if not started:
+                logger.warning(
+                    f"no candidate started ({len(candidates)} tried); "
+                    f"retrying in {cfg.error_backoff}s"
                 )
-                status.set(recording=True)
-                threading.Thread(
-                    target=_drain_stderr, args=(proc,), daemon=True,
-                    name="vision-ffmpeg-stderr",
-                ).start()
-                threading.Thread(
-                    target=_log_progress, args=(proc, cfg), daemon=True,
-                    name="vision-ffmpeg-progress",
-                ).start()
-                _consume_segments(cfg, run_dir, list_path, proc, status)
-                rc = proc.wait()
-                logger.error(f"ffmpeg exited (rc={rc}); restarting after backoff")
-            except Exception as e:
-                logger.error(f"recorder failed: {e}")
-            finally:
-                status.set(recording=False)
             time.sleep(cfg.error_backoff)
 
     threading.Thread(target=run, daemon=True, name="vision-recorder").start()

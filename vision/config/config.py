@@ -17,7 +17,14 @@ class Config:
     # Capture / encode. Defaults assume a USB (UVC) ZED in HD720: the camera
     # exposes a single side-by-side frame (2*1280 x 720), so we crop the left
     # eye and software-encode it (the Orin Nano has no NVENC).
+    #
+    # device empty -> auto-discover: match camera_match (ZED) by v4l2 name
+    # across /dev/video*, falling back to any capture device when
+    # allow_any_camera is set. A non-empty device pins that node and skips
+    # discovery.
     device: str
+    camera_match: str
+    allow_any_camera: bool
     capture_size: str
     capture_format: str
     capture_fps: int
@@ -69,7 +76,10 @@ def load() -> Config:
         s3_region=_env("S3_REGION", "us-west-2"),
         aws_access_key_id=_env("AWS_ACCESS_KEY_ID"),
         aws_secret_access_key=_env("AWS_SECRET_ACCESS_KEY"),
-        device=_env("DEVICE", "/dev/video0"),
+        device=_env("DEVICE", ""),
+        camera_match=_env("CAMERA_MATCH", "ZED"),
+        allow_any_camera=_env("ALLOW_ANY_CAMERA", "true").lower()
+        in ("1", "true", "yes", "on"),
         capture_size=_env("CAPTURE_SIZE", "2560x720"),
         capture_format=_env("CAPTURE_FORMAT", "yuyv422"),
         capture_fps=int(_env("CAPTURE_FPS", "30")),
