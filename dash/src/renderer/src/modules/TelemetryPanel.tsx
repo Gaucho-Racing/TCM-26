@@ -22,7 +22,7 @@ const STALE_MS = 5000;
  * | Battery temp       | `bcu_max_cell_temp`               | —          | °C   |
  * | Motor temp         | `dti_inv_motor_temp`              | —          | °C   |
  * | Inverter temp      | `dti_inv_ctrl_temp`               | —          | °C   |
- * | Brake pressure     | `ecu_brake_pedal`                 | —          | %    |
+ * | Brake pressure     | `ecu_brake_pedal`                 | —          | PSI  |
  */
 export const TELEMETRY_SIGNALS = [
   'bcu_ts_voltage',
@@ -143,9 +143,10 @@ const TILES: TileDef[] = [
   {
     signal: 'ecu_brake_pedal',
     label: 'BRAKE',
-    unit: '%',
+    unit: 'PSI',
     decimals: 0,
-    threshold: { warnAt: 60, critAt: 25 },
+    threshold: { warnAt: 1200, critAt: 1600 },
+    invert: true,
   },
 ];
 
