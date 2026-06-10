@@ -31,6 +31,16 @@ def _v4l2_name(idx: int) -> str:
         return ""
 
 
+def _try_rmdir(path: str) -> None:
+    """rmdir on best-effort: a candidate that failed startup grace never wrote
+    any segments, so the run_dir is empty and disposable. If it isn't (shouldn't
+    happen) we leave it for inspection rather than recurse-delete."""
+    try:
+        os.rmdir(path)
+    except OSError as e:
+        logger.debug(f"leaving {path}: {e}")
+
+
 def discover_devices(cfg: Config) -> list[tuple[str, str]]:
     """Ordered v4l2 candidates as (device, name) matching the ZED 2i. An
     explicit DEVICE overrides discovery. Otherwise we enumerate /dev/video*
@@ -245,6 +255,7 @@ def _run_candidate(
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     except Exception as e:
         logger.error(f"spawn failed for {device}: {e}")
+        _try_rmdir(run_dir)
         return False
 
     threading.Thread(
@@ -256,6 +267,7 @@ def _run_candidate(
         logger.warning(
             f"{device} failed to start (rc={proc.returncode}); trying next candidate"
         )
+        _try_rmdir(run_dir)
         return False
 
     logger.info(f"capturing from {cfg.capture_backend}:{device} [{mode}] -> {run_dir}")
