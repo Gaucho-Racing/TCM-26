@@ -14,17 +14,16 @@ class Config:
     aws_access_key_id: str
     aws_secret_access_key: str
 
-    # Capture / encode. Defaults assume a USB (UVC) ZED in HD720: the camera
-    # exposes a single side-by-side frame (2*1280 x 720), so we crop the left
-    # eye and software-encode it (the Orin Nano has no NVENC).
+    # Capture / encode. The on-car camera is a USB (UVC) ZED 2i in HD720: the
+    # camera exposes a single side-by-side frame (2*1280 x 720), so we crop
+    # the left eye and software-encode it (the Orin Nano has no NVENC).
     #
-    # device empty -> auto-discover: match camera_match (ZED) by v4l2 name
-    # across /dev/video*, falling back to any capture device when
-    # allow_any_camera is set. A non-empty device pins that node and skips
-    # discovery.
+    # device empty -> auto-discover by matching camera_match against v4l2
+    # device names across /dev/video* (the ZED 2i exposes multiple nodes,
+    # only one of which is the actual capture node). A non-empty device pins
+    # that node and skips discovery. No fallback to non-ZED cameras.
     device: str
     camera_match: str
-    allow_any_camera: bool
     # capture_backend: v4l2 (on-car), test (lavfi synthetic source — runs
     # anywhere, exercises the full encode/segment/upload path), or avfoundation
     # (native Mac webcam when running the service outside Docker).
@@ -42,12 +41,7 @@ class Config:
     segment_time: int
     output_dir: str
 
-    # Upload. Only run over an unmetered link — video is far too large for
-    # the cellular modem, so uploads are gated to these interfaces. The gate
-    # reads /sys/class/net, so disable it (upload_require_unmetered=false) for
-    # local testing on a Mac.
-    upload_ifaces: tuple[str, ...]
-    upload_require_unmetered: bool
+    # Upload.
     upload_batch: int
     max_local_bytes: int
     idle_sleep: float
@@ -85,9 +79,7 @@ def load() -> Config:
         aws_access_key_id=_env("AWS_ACCESS_KEY_ID"),
         aws_secret_access_key=_env("AWS_SECRET_ACCESS_KEY"),
         device=_env("DEVICE", ""),
-        camera_match=_env("CAMERA_MATCH", "ZED"),
-        allow_any_camera=_env("ALLOW_ANY_CAMERA", "true").lower()
-        in ("1", "true", "yes", "on"),
+        camera_match=_env("CAMERA_MATCH", "ZED 2i"),
         capture_backend=_env("CAPTURE_BACKEND", "v4l2"),
         av_device=_env("AV_DEVICE", "0"),
         capture_size=_env("CAPTURE_SIZE", "2560x720"),
@@ -103,13 +95,8 @@ def load() -> Config:
         x264_preset=_env("X264_PRESET", "veryfast"),
         segment_time=int(_env("SEGMENT_TIME", "4")),
         output_dir=_env("OUTPUT_DIR", "/data"),
-        upload_ifaces=tuple(
-            i.strip() for i in _env("UPLOAD_IFACES", "wlan0,eth0").split(",") if i.strip()
-        ),
-        upload_require_unmetered=_env("UPLOAD_REQUIRE_UNMETERED", "true").lower()
-        in ("1", "true", "yes", "on"),
         upload_batch=int(_env("UPLOAD_BATCH", "32")),
-        max_local_bytes=int(_env("MAX_LOCAL_BYTES", str(20 * 1024**3))),
+        max_local_bytes=int(_env("MAX_LOCAL_BYTES", str(100 * 1024**3))),
         idle_sleep=float(_env("IDLE_SLEEP", "30")),
         error_backoff=float(_env("ERROR_BACKOFF", "60")),
         startup_delay=float(_env("STARTUP_DELAY", "10")),

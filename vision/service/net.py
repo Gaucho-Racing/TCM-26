@@ -2,21 +2,6 @@ import socket
 import time
 
 
-def iface_up(iface: str) -> bool:
-    try:
-        with open(f"/sys/class/net/{iface}/operstate") as f:
-            return f.read().strip() == "up"
-    except OSError:
-        return False
-
-
-def on_unmetered_network(ifaces: tuple[str, ...]) -> bool:
-    """True if any allowlisted (wifi/ethernet) interface is up. The cellular
-    modem is deliberately not in the allowlist, so video never uploads over
-    it."""
-    return any(iface_up(i) for i in ifaces)
-
-
 def internet_up(host: str = "8.8.8.8", port: int = 53, timeout: float = 2.0) -> bool:
     """Mirror the relay's connectivity probe (mqtt/service/tcm_state.go): a
     TCP dial to Google DNS."""

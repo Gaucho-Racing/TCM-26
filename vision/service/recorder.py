@@ -31,13 +31,15 @@ def _v4l2_name(idx: int) -> str:
         return ""
 
 
-def discover_devices(cfg: Config) -> list[tuple[str, bool, str]]:
-    """Ordered capture candidates as (device, stereo, name). An explicit DEVICE
-    overrides discovery. Otherwise we enumerate /dev/video*, putting name-matched
-    (ZED) nodes first and using their stereo geometry; remaining cameras follow
-    as generic fallbacks (no stereo crop) when ALLOW_ANY_CAMERA is set."""
+def discover_devices(cfg: Config) -> list[tuple[str, str]]:
+    """Ordered v4l2 candidates as (device, name) matching the ZED 2i. An
+    explicit DEVICE overrides discovery. Otherwise we enumerate /dev/video*
+    and keep only nodes whose v4l2 name contains camera_match — the ZED 2i
+    exposes several /dev/videoN nodes (capture + metadata), so we try them in
+    order and let ffmpeg startup eliminate the non-capture ones. No fallback
+    to non-ZED cameras."""
     if cfg.device:
-        return [(cfg.device, True, "explicit")] if os.path.exists(cfg.device) else []
+        return [(cfg.device, "explicit")] if os.path.exists(cfg.device) else []
 
     indices = []
     for path in glob("/sys/class/video4linux/video*"):
@@ -48,20 +50,15 @@ def discover_devices(cfg: Config) -> list[tuple[str, bool, str]]:
     indices.sort()
 
     match = cfg.camera_match.lower()
-    zed: list[tuple[str, bool, str]] = []
-    other: list[tuple[str, bool, str]] = []
+    out: list[tuple[str, str]] = []
     for idx in indices:
-        dev = f"/dev/video{idx}"
         name = _v4l2_name(idx)
         if match and match in name.lower():
-            zed.append((dev, True, name))
-        else:
-            other.append((dev, False, name))
-
-    return zed + other if cfg.allow_any_camera else zed
+            out.append((f"/dev/video{idx}", name))
+    return out
 
 
-def _input_args(cfg: Config, source: str, stereo: bool) -> list[str]:
+def _input_args(cfg: Config, source: str) -> list[str]:
     if cfg.capture_backend == "test":
         # Synthetic source paced to realtime (-re) so segments finalize and
         # upload on the same cadence as a real camera. Sized like the ZED so
@@ -75,29 +72,29 @@ def _input_args(cfg: Config, source: str, stereo: bool) -> list[str]:
             "-f", "avfoundation", "-framerate", str(cfg.capture_fps),
             "-i", f"{source}:none",
         ]
-    # v4l2
-    if stereo:
-        # ZED side-by-side frame: fix the capture format/size and crop the left
-        # eye.
-        return [
-            "-f", "v4l2",
-            "-input_format", cfg.capture_format,
-            "-video_size", cfg.capture_size,
-            "-framerate", str(cfg.capture_fps),
-            "-i", source,
-        ]
-    # Unknown fallback camera: let the device negotiate its native format.
-    return ["-f", "v4l2", "-i", source]
+    # v4l2: ZED 2i side-by-side frame — fix the capture format/size and crop
+    # the left eye in the filter chain.
+    return [
+        "-f", "v4l2",
+        "-input_format", cfg.capture_format,
+        "-video_size", cfg.capture_size,
+        "-framerate", str(cfg.capture_fps),
+        "-i", source,
+    ]
 
 
-def _build_cmd(
-    cfg: Config, run_dir: str, source: str, stereo: bool
-) -> tuple[list[str], str]:
+def _build_cmd(cfg: Config, run_dir: str, source: str) -> tuple[list[str], str]:
     seg_pattern = os.path.join(run_dir, "seg_%05d.ts")
     list_path = os.path.join(run_dir, "segments.csv")
-    input_args = _input_args(cfg, source, stereo)
-    # stereo -> crop the left eye; otherwise scale to 720p (even width).
-    vf = f"crop={cfg.crop},fps={cfg.fps}" if stereo else f"fps={cfg.fps},scale=-2:720"
+    input_args = _input_args(cfg, source)
+    # avfoundation feeds a single-eye webcam (local-dev only) — scale to 720p
+    # instead of cropping. v4l2 (ZED 2i) and test (ZED-shaped synthetic) both
+    # crop the left eye.
+    vf = (
+        f"fps={cfg.fps},scale=-2:720"
+        if cfg.capture_backend == "avfoundation"
+        else f"crop={cfg.crop},fps={cfg.fps}"
+    )
 
     cmd = [
         "ffmpeg", "-hide_banner", "-loglevel", "warning", "-nostdin",
@@ -232,14 +229,16 @@ def _consume_segments(
 
 
 def _run_candidate(
-    cfg: Config, device: str, stereo: bool, name: str, status: VisionStatus
+    cfg: Config, device: str, name: str, status: VisionStatus
 ) -> bool:
     """Start ffmpeg on one device. Returns True if it started and we ran it to
     exit (caller should re-discover), False if it failed startup (try next)."""
     run_dir = os.path.join(cfg.output_dir, f"run_{ulid.make()}")
     os.makedirs(run_dir, exist_ok=True)
-    cmd, list_path = _build_cmd(cfg, run_dir, device, stereo)
-    mode = "stereo left-eye crop" if stereo else f"generic 720p ({name or 'unknown'})"
+    cmd, list_path = _build_cmd(cfg, run_dir, device)
+    mode = (
+        "single-eye 720p" if cfg.capture_backend == "avfoundation" else "stereo left-eye crop"
+    )
     logger.info(f"trying capture: {cfg.capture_backend}:{device} [{mode}]")
 
     try:
@@ -264,7 +263,9 @@ def _run_candidate(
     threading.Thread(
         target=_log_progress, args=(proc, cfg), daemon=True, name="vision-ffmpeg-progress"
     ).start()
-    width, height = _crop_dims(cfg.crop) if stereo else (0, 720)
+    width, height = (
+        (0, 720) if cfg.capture_backend == "avfoundation" else _crop_dims(cfg.crop)
+    )
     try:
         _consume_segments(cfg, run_dir, list_path, proc, status, width, height)
         rc = proc.wait()
@@ -281,23 +282,23 @@ def start_recorder(cfg: Config, status: VisionStatus) -> None:
                 candidates = discover_devices(cfg)
                 if not candidates:
                     logger.warning(
-                        f"no camera found (device='{cfg.device}', match='{cfg.camera_match}', "
-                        f"allow_any={cfg.allow_any_camera}); retrying in {cfg.error_backoff}s"
+                        f"no ZED 2i camera found (device='{cfg.device}', "
+                        f"match='{cfg.camera_match}'); retrying in {cfg.error_backoff}s"
                     )
                     time.sleep(cfg.error_backoff)
                     continue
             elif cfg.capture_backend == "test":
-                candidates = [("testsrc2", True, "test pattern")]
+                candidates = [("testsrc2", "test pattern")]
             elif cfg.capture_backend == "avfoundation":
-                candidates = [(cfg.av_device, False, f"avfoundation:{cfg.av_device}")]
+                candidates = [(cfg.av_device, f"avfoundation:{cfg.av_device}")]
             else:
                 logger.error(f"unknown CAPTURE_BACKEND '{cfg.capture_backend}'")
                 time.sleep(cfg.error_backoff)
                 continue
 
             started = False
-            for device, stereo, name in candidates:
-                if _run_candidate(cfg, device, stereo, name, status):
+            for device, name in candidates:
+                if _run_candidate(cfg, device, name, status):
                     started = True
                     break
 

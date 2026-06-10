@@ -36,11 +36,11 @@ def main() -> None:
     cfg = load()
     print_banner(cfg)
     configure_logging(cfg.log_level)
-    camera = cfg.device or f"auto(match={cfg.camera_match}, any={cfg.allow_any_camera})"
+    camera = cfg.device or f"auto(match={cfg.camera_match})"
     logger.info(
         f"vision starting (vehicle_id={cfg.vehicle_id}, camera={camera}, "
         f"{cfg.crop}@{cfg.fps}fps {cfg.bitrate}, segment_time={cfg.segment_time}s, "
-        f"s3_uri={cfg.s3_uri}, upload_ifaces={cfg.upload_ifaces})"
+        f"s3_uri={cfg.s3_uri})"
     )
 
     ensure_schema(cfg.pg_uri)

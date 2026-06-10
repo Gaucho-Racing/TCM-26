@@ -15,7 +15,7 @@ from database.db import (
     set_uploaded,
 )
 from model.segment import Segment
-from service.net import internet_up, on_unmetered_network
+from service.net import internet_up
 from service.state import UploadState, VisionStatus
 
 
@@ -59,10 +59,6 @@ def enforce_local_budget(cfg: Config) -> None:
 
 
 def run_once(cfg: Config, s3, status: VisionStatus) -> bool:
-    if cfg.upload_require_unmetered and not on_unmetered_network(cfg.upload_ifaces):
-        status.set(upload=UploadState.GATED)
-        logger.info("upload gated: no unmetered network")
-        return False
     if not internet_up():
         status.set(upload=UploadState.GATED)
         logger.info("upload gated: no internet")
