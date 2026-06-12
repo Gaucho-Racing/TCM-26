@@ -1,6 +1,6 @@
 [project]
 name = "vision"
-version = "1.10.7"
+version = "1.10.8"
 description = "On-car camera recorder + S3 uploader for TCM-26 (ZED -> H.264 -> Epic Shelter)"
 requires-python = ">=3.12"
 dependencies = [
