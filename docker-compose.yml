@@ -128,6 +128,67 @@ services:
             VIRTUAL_CAN_PORT: "8100"
             HEARTBEAT_INTERVAL: "5"
 
+    vision:
+        build:
+            context: ./vision
+            dockerfile: Dockerfile.dev
+        network_mode: host
+        # The ZED 2i enumerates as a UVC device. Camera discovery scans
+        # /dev/video* (see vision/service/recorder.py), so grant the whole
+        # v4l2 device class (char major 81) and expose the nodes — that way
+        # the ZED 2i is found at whatever index it enumerates. On non-Jetson
+        # hosts (or with no camera) the recorder just loops on its backoff —
+        # harmless, the uploader still drains any backlog. The prod stack in
+        # jetson-infra sets `restart: always`.
+        device_cgroup_rules:
+            - "c 81:* rmw"
+        volumes:
+            - ./vision:/app
+            - vision_data:/data
+            - /dev:/dev
+        environment:
+            ENV: "DEV"
+            VEHICLE_ID: ${VEHICLE_ID}
+            DATABASE_HOST: localhost
+            DATABASE_PORT: "5432"
+            DATABASE_NAME: tcm26
+            DATABASE_USER: postgres
+            DATABASE_PASSWORD: password
+            S3_URI: s3://gaucho-racing/mapache/
+            S3_REGION: us-west-2
+            AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+            AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+            # v4l2 on-car. For local e2e testing use CAPTURE_BACKEND=test
+            # (a synthetic source — no camera needed).
+            CAPTURE_BACKEND: v4l2
+            # Leave DEVICE empty to auto-discover: match CAMERA_MATCH by
+            # v4l2 name across /dev/video* (the ZED 2i exposes several nodes;
+            # ffmpeg startup picks the actual capture node). Set DEVICE to
+            # pin a specific node and skip discovery.
+            DEVICE: ""
+            CAMERA_MATCH: "ZED 2i"
+            # ZED 2i HD720 side-by-side (2*1280 x 720); crop the left eye.
+            # The Orin Nano has no NVENC, so encode is software x264.
+            CAPTURE_SIZE: 2560x720
+            CAPTURE_FORMAT: yuyv422
+            CAPTURE_FPS: "30"
+            CROP: 1280:720:0:0
+            FPS: "30"
+            BITRATE: 5M
+            MAXRATE: 5M
+            BUFSIZE: 10M
+            X264_PRESET: veryfast
+            SEGMENT_TIME: "4"
+            OUTPUT_DIR: /data
+            # Paused for now — recording still happens; segments queue up
+            # locally bounded by MAX_LOCAL_BYTES.
+            UPLOAD_ENABLED: "false"
+            MAX_LOCAL_BYTES: "107374182400"
+            IDLE_SLEEP: "10"
+            ERROR_BACKOFF: "30"
+            VIRTUAL_CAN_PORT: "8100"
+            HEARTBEAT_INTERVAL: "5"
+
     nanomq:
         image: emqx/nanomq:latest
         network_mode: host
@@ -149,3 +210,4 @@ services:
 volumes:
     pgdata:
     mqtt_go_cache:
+    vision_data:
