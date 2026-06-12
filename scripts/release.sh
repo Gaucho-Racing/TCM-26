@@ -7,14 +7,16 @@ set -euo pipefail
 #   ./scripts/release.sh             # interactive — shows current, prompts
 #
 # A release in tcm-26 means a single tag (vX.Y.Z) that:
-#   - tags the mqtt, icanspi, and shelter Docker images (their workflows pick
-#     up the release and add a <version> tag alongside `latest`)
+#   - tags the mqtt, icanspi, shelter, and vision Docker images (their
+#     workflows pick up the release and add a <version> tag alongside
+#     `latest`)
 #   - kicks the dash release job (dash.yml builds the linux/arm64 .deb
 #     and AppImage and attaches them to the GitHub Release)
 #
 # Bumps the version baked into:
 #   - mqtt/config/config.go    (Version constant; surfaces in the relay banner)
 #   - shelter/pyproject.toml   (version field; surfaces in the shelter banner)
+#   - vision/pyproject.toml    (version field; surfaces in the vision banner)
 #   - dash/package.json        (drives electron-builder artifact filenames)
 #
 # Mirrors Mapache's scripts/release.sh in shape so both repos feel the
@@ -94,7 +96,7 @@ fi
 REPO_ROOT=$(git rev-parse --show-toplevel)
 cd "$REPO_ROOT"
 
-SERVICES=("mqtt" "icanspi" "shelter")
+SERVICES=("mqtt" "icanspi" "shelter" "vision")
 
 echo ""
 echo "=== Release Summary ==="
@@ -106,6 +108,7 @@ echo ""
 echo "  Files to update:"
 echo "    mqtt/config/config.go"
 echo "    shelter/pyproject.toml"
+echo "    vision/pyproject.toml"
 echo "    dash/package.json"
 echo ""
 echo "  Docker images that will be tagged:"
@@ -131,9 +134,10 @@ sed -i '' "s/^var Version = \".*\"/var Version = \"${SEMVER}\"/" mqtt/config/con
 # transitive package pinned to its own "version = ..." which we mustn't
 # bump. Match against the first occurrence by anchoring to start of line.
 sed -i '' "s/^version = \".*\"/version = \"${SEMVER}\"/" shelter/pyproject.toml
+sed -i '' "s/^version = \".*\"/version = \"${SEMVER}\"/" vision/pyproject.toml
 sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"${SEMVER}\"/" dash/package.json
 
-git add mqtt/config/config.go shelter/pyproject.toml dash/package.json
+git add mqtt/config/config.go shelter/pyproject.toml vision/pyproject.toml dash/package.json
 git commit -m "release: tcm-26 ${VERSION}"
 git push origin main
 
@@ -144,7 +148,7 @@ gh release create "$TAG" \
 
 echo ""
 echo "Done. ${TAG} released."
-echo "  - mqtt + icanspi + shelter workflows will publish ${SEMVER}-tagged images"
+echo "  - mqtt + icanspi + shelter + vision workflows will publish ${SEMVER}-tagged images"
 echo "  - dash workflow will attach installers to the release"
 echo ""
 echo "Watch progress:"
