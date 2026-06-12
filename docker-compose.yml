@@ -180,6 +180,9 @@ services:
             X264_PRESET: veryfast
             SEGMENT_TIME: "4"
             OUTPUT_DIR: /data
+            # Paused for now — recording still happens; segments queue up
+            # locally bounded by MAX_LOCAL_BYTES.
+            UPLOAD_ENABLED: "false"
             MAX_LOCAL_BYTES: "107374182400"
             IDLE_SLEEP: "10"
             ERROR_BACKOFF: "30"

@@ -41,7 +41,10 @@ class Config:
     segment_time: int
     output_dir: str
 
-    # Upload.
+    # Upload. upload_enabled=false pauses S3 uploads entirely (the local
+    # budget still evicts oldest segments so disk stays bounded); recording
+    # continues regardless.
+    upload_enabled: bool
     upload_batch: int
     max_local_bytes: int
     idle_sleep: float
@@ -95,6 +98,8 @@ def load() -> Config:
         x264_preset=_env("X264_PRESET", "veryfast"),
         segment_time=int(_env("SEGMENT_TIME", "4")),
         output_dir=_env("OUTPUT_DIR", "/data"),
+        upload_enabled=_env("UPLOAD_ENABLED", "true").lower()
+        in ("1", "true", "yes", "on"),
         upload_batch=int(_env("UPLOAD_BATCH", "32")),
         max_local_bytes=int(_env("MAX_LOCAL_BYTES", str(100 * 1024**3))),
         idle_sleep=float(_env("IDLE_SLEEP", "30")),

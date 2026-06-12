@@ -98,6 +98,8 @@ def run_once(cfg: Config, s3, status: VisionStatus) -> bool:
 
 
 def start_uploader(cfg: Config, s3, status: VisionStatus) -> None:
+    if not cfg.upload_enabled:
+        logger.warning("UPLOAD_ENABLED=false: S3 uploads paused (recording continues)")
     if cfg.startup_delay > 0:
         logger.info(f"startup: sleeping {cfg.startup_delay}s before first upload pass")
         time.sleep(cfg.startup_delay)
@@ -107,6 +109,10 @@ def start_uploader(cfg: Config, s3, status: VisionStatus) -> None:
             enforce_local_budget(cfg)
             pending = pending_count(cfg.pg_uri)
             status.set(pending=pending)
+            if not cfg.upload_enabled:
+                status.set(upload=UploadState.GATED)
+                time.sleep(cfg.idle_sleep)
+                continue
             if pending == 0:
                 status.set(upload=UploadState.IDLE)
                 time.sleep(cfg.idle_sleep)
