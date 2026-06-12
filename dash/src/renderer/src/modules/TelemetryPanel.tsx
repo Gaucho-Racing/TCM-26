@@ -32,8 +32,8 @@ export const TELEMETRY_SIGNALS = [
   'bcu_accumulator_current',
   'acu_hv_input_current',
   'bcu_max_cell_temp',
-  'dti_inv_motor_temp',
-  'dti_inv_ctrl_temp',
+  'dti_motor_temp',
+  'dti_ctrl_temp',
   'ecu_brake_pedal',
 ] as const;
 
@@ -143,9 +143,9 @@ const TILES: TileDef[] = [
   {
     signal: 'ecu_brake_pedal',
     label: 'BRAKE',
-    unit: '%',
+    unit: 'PSI',
     decimals: 0,
-    threshold: { warnAt: 60, critAt: 25 },
+    threshold: { warnAt: 9999, critAt: 9999 },
   },
 ];
 

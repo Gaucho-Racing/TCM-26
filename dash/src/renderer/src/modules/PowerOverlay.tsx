@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { useSignal } from '../store/signals';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSignalStore } from '../store/signals';
 
 // ═══════════════════════════════════════════════════════════════════════
 // When `ecu_power_level` changes, this component fades a full-screen
 // WebP overlay for 2 seconds with the new power level displayed on top.
+//
+// Detection uses Zustand's vanilla `subscribe` (NOT the React selector)
+// so that every store mutation is seen, regardless of React's render
+// batching.  A cooldown ref prevents re-triggering while the overlay
+// is already up, which guards against signal bursts from the car's SSE
+// relay that could otherwise fire the effect multiple times per tick.
 // ═══════════════════════════════════════════════════════════════════════
 
 /** How long the overlay stays visible after the last power-level change. */
@@ -22,52 +28,74 @@ const POWER_LEVEL_MAP: Record<number, number> = {
 import powerImg from '../assets/powahhh.webp';
 
 export function PowerOverlay() {
-  const value = useSignal('ecu_power_level');
+  // ── React state (only for rendering) ────────────────────────────
   const [visible, setVisible] = useState(false);
-  const [displayValue, setDisplayValue] = useState(value);
-  const prevRef = useRef(value);
-  const mountedRef = useRef(false);
-  const overlayUpRef = useRef(false);
-  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [displayValue, setDisplayValue] = useState(0);
 
-  useEffect(() => {
-    // Skip the initial mount so the overlay doesn't fire just because
-    // the first signal arrived (fallback 0 → real value).
-    if (!mountedRef.current) {
-      mountedRef.current = true;
-      prevRef.current = value;
+  // ── Refs ────────────────────────────────────────────────────────
+  // Tracks the last *known* ecu_power_level so we can detect edges.
+  const lastLevelRef = useRef<number | null>(null);
+  // "Blocker": true while overlay is visible, suppressing re-triggers.
+  const showingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Stable callback so the subscribe effect doesn't need it as a dep.
+  const onPowerChange = useCallback((newLevel: number) => {
+    const mapped = POWER_LEVEL_MAP[newLevel] ?? newLevel;
+
+    // If the overlay is already up, just bump the displayed number and
+    // reset the hide timer — no flash, no duplicate transition.
+    if (showingRef.current) {
+      setDisplayValue(mapped);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        setVisible(false);
+        showingRef.current = false;
+      }, VISIBLE_DURATION_MS);
       return;
     }
 
-    if (value !== prevRef.current) {
-      const mapped = POWER_LEVEL_MAP[value] ?? value;
-      prevRef.current = value;
+    // Fresh trigger: show the overlay.
+    setDisplayValue(mapped);
+    setVisible(true);
+    showingRef.current = true;
 
-      // Always update the displayed value immediately — Zustand's
-      // selector already suppresses re-renders when the raw value
-      // hasn't changed, so there's no flicker from repeated signals.
-      setDisplayValue(mapped);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setVisible(false);
+      showingRef.current = false;
+    }, VISIBLE_DURATION_MS);
+  }, []);
 
-      // Reset the hide timer — overlay stays up for 2 s from
-      // *this* change. If it wasn't visible yet, show it now.
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
-      hideTimerRef.current = setTimeout(() => {
-        setVisible(false);
-        overlayUpRef.current = false;
-      }, VISIBLE_DURATION_MS);
+  // ── Subscribe to the Zustand store directly ─────────────────────
+  // This runs on EVERY store mutation, not just when the React selector
+  // would report a changed value.  We do our own edge detection here.
+  useEffect(() => {
+    // Seed the ref with whatever is already in the store on mount.
+    const initial = useSignalStore.getState().signals['ecu_power_level']?.value ?? 0;
+    lastLevelRef.current = initial;
 
-      if (!overlayUpRef.current) {
-        setVisible(true);
-        overlayUpRef.current = true;
-      }
-    }
+    console.log('[PowerOverlay] mounted — initial ecu_power_level =', initial);
+
+    // Vanilla Zustand subscribe — fires synchronously after every
+    // setSignal call, before React has a chance to batch anything.
+    const unsub = useSignalStore.subscribe((state, prevState) => {
+      const newLevel = state.signals['ecu_power_level']?.value;
+      const oldLevel = prevState.signals['ecu_power_level']?.value;
+
+      // Not our signal, or value hasn't changed — skip.
+      if (newLevel === undefined || newLevel === oldLevel) return;
+
+      // Edge detected! Update our ref and fire the overlay logic.
+      lastLevelRef.current = newLevel;
+      onPowerChange(newLevel);
+    });
 
     return () => {
-      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+      unsub();
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [value]);
-
-  if (!powerImg) return null;
+  }, [onPowerChange]);
 
   return (
     <div
@@ -77,7 +105,9 @@ export function PowerOverlay() {
       }`}
     >
       <div className="relative flex items-center justify-center">
-        <img src={powerImg} alt="Power level" className="max-h-full max-w-full object-contain" />
+        {powerImg && (
+          <img src={powerImg} alt="Power level" className="max-h-full max-w-full object-contain" />
+        )}
         <span className="absolute text-9xl font-black text-white tabular-nums drop-shadow-[0_0_20px_rgba(0,0,0,0.8)]">
           {displayValue}
         </span>
