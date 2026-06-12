@@ -6,6 +6,10 @@ requires-python = ">=3.12"
 dependencies = [
     "adbc-driver-postgresql>=1.0",
     "adbc-driver-manager>=1.0",
+    # ADBC's bind-parameter path needs an Arrow backend; without this, every
+    # insert_segment / pending_count call raises ProgrammingError and the
+    # recorder thread dies on first finalized segment. Matches shelter.
+    "pyarrow>=17",
     "loguru>=0.7",
     "gr-ulid>=1.1",
     "boto3>=1.35",
