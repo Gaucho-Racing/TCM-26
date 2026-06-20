@@ -54,6 +54,7 @@ var nodeIDMap = map[byte]string{
 	0x1D: "brake_temp_fr",
 	0x1E: "brake_temp_rl",
 	0x1F: "brake_temp_rr",
+	0x2A: "dcdc",
 	0x30: "dgps",
 	0x67: "dti",
 }
