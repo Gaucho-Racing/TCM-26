@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSignalStore } from '../store/signals';
 
 // ═══════════════════════════════════════════════════════════════════════
-// When `ecu_power_level` changes, this component fades a full-screen
+// When `ecu_forward_ac_i_code` changes, this component fades a full-screen
 // WebP overlay for 2 seconds with the new power level displayed on top.
 //
 // Detection uses Zustand's vanilla `subscribe` (NOT the React selector)
@@ -15,15 +15,17 @@ import { useSignalStore } from '../store/signals';
 /** How long the overlay stays visible after the last power-level change. */
 const VISIBLE_DURATION_MS = 2000;
 
-/** Maps `ecu_power_level` (0–5) to the displayed kW value. */
-const POWER_LEVEL_MAP: Record<number, number> = {
-  0: 50,
-  1: 100,
-  2: 150,
-  3: 200,
-  4: 250,
-  5: 275,
-};
+/** Maps `ecu_forward_ac_i_code` (0–5) to the displayed kW value. No longer
+ * needed because mapping is being handled on the ingest side.
+*/
+// const POWER_LEVEL_MAP: Record<number, number> = {
+//   0: 50,
+//   1: 100,
+//   2: 150,
+//   3: 200,
+//   4: 250,
+//   5: 275,
+// };
 
 import powerImg from '../assets/powahhh.webp';
 
@@ -33,7 +35,7 @@ export function PowerOverlay() {
   const [displayValue, setDisplayValue] = useState(0);
 
   // ── Refs ────────────────────────────────────────────────────────
-  // Tracks the last *known* ecu_power_level so we can detect edges.
+  // Tracks the last *known* ecu_forward_ac_i_code so we can detect edges.
   const lastLevelRef = useRef<number | null>(null);
   // "Blocker": true while overlay is visible, suppressing re-triggers.
   const showingRef = useRef(false);
@@ -41,12 +43,12 @@ export function PowerOverlay() {
 
   // Stable callback so the subscribe effect doesn't need it as a dep.
   const onPowerChange = useCallback((newLevel: number) => {
-    const mapped = POWER_LEVEL_MAP[newLevel] ?? newLevel;
+    // const mapped = POWER_LEVEL_MAP[newLevel] ?? newLevel;
 
     // If the overlay is already up, just bump the displayed number and
     // reset the hide timer — no flash, no duplicate transition.
     if (showingRef.current) {
-      setDisplayValue(mapped);
+      setDisplayValue(newLevel);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         setVisible(false);
@@ -56,7 +58,7 @@ export function PowerOverlay() {
     }
 
     // Fresh trigger: show the overlay.
-    setDisplayValue(mapped);
+    setDisplayValue(newLevel);
     setVisible(true);
     showingRef.current = true;
 
@@ -72,16 +74,16 @@ export function PowerOverlay() {
   // would report a changed value.  We do our own edge detection here.
   useEffect(() => {
     // Seed the ref with whatever is already in the store on mount.
-    const initial = useSignalStore.getState().signals['ecu_power_level']?.value ?? 0;
+    const initial = useSignalStore.getState().signals['ecu_forward_ac_i_code']?.value ?? 0;
     lastLevelRef.current = initial;
 
-    console.log('[PowerOverlay] mounted — initial ecu_power_level =', initial);
+    console.log('[PowerOverlay] mounted — initial ecu_forward_ac_i_code =', initial);
 
     // Vanilla Zustand subscribe — fires synchronously after every
     // setSignal call, before React has a chance to batch anything.
     const unsub = useSignalStore.subscribe((state, prevState) => {
-      const newLevel = state.signals['ecu_power_level']?.value;
-      const oldLevel = prevState.signals['ecu_power_level']?.value;
+      const newLevel = state.signals['ecu_forward_ac_i_code']?.value;
+      const oldLevel = prevState.signals['ecu_forward_ac_i_code']?.value;
 
       // Not our signal, or value hasn't changed — skip.
       if (newLevel === undefined || newLevel === oldLevel) return;
@@ -100,9 +102,8 @@ export function PowerOverlay() {
   return (
     <div
       aria-hidden={!visible}
-      className={`pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/80 transition-opacity duration-300 ${
-        visible ? 'opacity-100' : 'opacity-0'
-      }`}
+      className={`pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/80 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'
+        }`}
     >
       <div className="relative flex items-center justify-center">
         {powerImg && (

@@ -9,20 +9,23 @@ const STALE_MS = 5000;
 
 /**
  * Signal names this panel needs. Spread into `SUBSCRIBED_SIGNALS` in
- * App.tsx so the ingest actually sends them.
+ * App.tsx so the ingest actually sends them. The forward and regen AC are
+ * already declared in `SUBSCRIBED_SIGNALS`.
  *
  * | Requested metric   | Ingest signal                     | DBC source | Unit |
  * |--------------------|-----------------------------------|------------|------|
  * | TS voltage         | `bcu_ts_voltage`                  | —          | V    |
- * | GLV voltage        | `bcu_12v_voltage`                  | —          | V    |
- * | AC current         | `bcu_accumulator_soc`          | —          | A    |
- * | DTI AC limit       | `bcu_glv_soc`| —          | A    |
+ * | GLV voltage        | `bcu_12v_voltage`                 | —          | V    |
+ * | AC current         | `bcu_accumulator_soc`             | —          | A    |
+ * | DTI AC limit       | `bcu_glv_soc`                     | —          | A    |
  * | TS current         | `bcu_accumulator_current`         | —          | A    |
  * | DC-DC current      | `acu_hv_input_current`            | —          | A    |
  * | Battery temp       | `bcu_max_cell_temp`               | —          | °C   |
  * | Motor temp         | `dti_inv_motor_temp`              | —          | °C   |
  * | Inverter temp      | `dti_inv_ctrl_temp`               | —          | °C   |
  * | Brake pressure     | `ecu_brake_pedal`                 | —          | %    |
+ * | Forward AC         | `ecu_forward_ac_i_code`           | -          | A    |
+ * | Regen AC           | `ecu_regen_ac_i_code`             | -          | A    |
  */
 export const TELEMETRY_SIGNALS = [
   'bcu_ts_voltage',
@@ -147,6 +150,22 @@ const TILES: TileDef[] = [
     decimals: 0,
     threshold: { warnAt: 9999, critAt: 9999 },
   },
+  {
+    signal: 'ecu_forward_ac_i_code',
+    label: 'FWD CURR',
+    unit: 'A',
+    decimals: 1,
+    threshold: { warnAt: 9999, critAt: 9999 },
+    invert: true,
+  },
+  {
+    signal: 'ecu_regen_ac_i_code',
+    label: 'REGEN CURR',
+    unit: 'A',
+    decimals: 1,
+    threshold: { warnAt: 9999, critAt: 9999},
+    invert: true,
+  },
 ];
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -223,7 +242,9 @@ export function TelemetryPanel() {
   const v07 = useSignal('dti_inv_motor_temp');
   const v08 = useSignal('dti_inv_ctrl_temp');
   const v09 = useSignal('ecu_brake_pedal');
-  const values = [v00, v01, v02, v03, v04, v05, v06, v07, v08, v09];
+  const v10 = useSignal('ecu_forward_ac_i_code');
+  const v11 = useSignal('ecu_regen_ac_i_code');
+  const values = [v00, v01, v02, v03, v04, v05, v06, v07, v08, v09, v10, v11];
 
   return (
     <div className="flex min-h-0 flex-col gap-2 overflow-y-auto rounded-2xl border border-neutral-800 bg-gradient-to-b from-neutral-900/80 to-neutral-900/40 p-3">
