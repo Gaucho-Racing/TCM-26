@@ -163,7 +163,7 @@ const TILES: TileDef[] = [
     label: 'REGEN CURR',
     unit: 'A',
     decimals: 1,
-    threshold: { warnAt: 9999, critAt: 9999},
+    threshold: { warnAt: 9999, critAt: 9999 },
     invert: true,
   },
 ];
