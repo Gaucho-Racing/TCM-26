@@ -17,7 +17,7 @@ const VISIBLE_DURATION_MS = 2000;
 
 /** Maps `ecu_forward_ac_i_code` (0–5) to the displayed kW value. No longer
  * needed because mapping is being handled on the ingest side.
-*/
+ */
 // const POWER_LEVEL_MAP: Record<number, number> = {
 //   0: 50,
 //   1: 100,
@@ -102,8 +102,9 @@ export function PowerOverlay() {
   return (
     <div
       aria-hidden={!visible}
-      className={`pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/80 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'
-        }`}
+      className={`pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-black/80 transition-opacity duration-300 ${
+        visible ? 'opacity-100' : 'opacity-0'
+      }`}
     >
       <div className="relative flex items-center justify-center">
         {powerImg && (
