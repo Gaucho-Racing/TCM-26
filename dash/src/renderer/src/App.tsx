@@ -14,8 +14,8 @@ import {
 const SUBSCRIBED_SIGNALS = [
   // ECU state machine
   'ecu_ecu_state',
-  'ecu_power_level',
-  'ecu_torque_map',
+  'ecu_forward_ac_i_code',
+  'ecu_regen_ac_i_code',
   // Safety lights from Dash Config (ECU → dash).
   'ecu_led_bms',
   'ecu_led_imd',
