@@ -8,7 +8,7 @@ import {
   APPS_SIGNALS,
   APPSPanel,
   ToastContainer,
-  PowerOverlay,
+  RegenOverlay,
 } from './modules';
 
 const SUBSCRIBED_SIGNALS = [
@@ -64,7 +64,7 @@ export default function App() {
       <SpeedPanel />
       <RightColumn />
       <ToastContainer />
-      <PowerOverlay />
+      <RegenOverlay />
     </div>
   );
 }
