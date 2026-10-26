@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSignalStore } from '../store/signals';
 
 // ═══════════════════════════════════════════════════════════════════════
-// When `ecu_forward_ac_i_code` changes, this component fades a full-screen
-// WebP overlay for 2 seconds with the new power level displayed on top.
+// When  `REGEN_SIGNAL` changes, this component fades a full-screen
+// WebP overlay for 2 seconds with the new regen level displayed on top.
 //
 // Detection uses Zustand's vanilla `subscribe` (NOT the React selector)
 // so that every store mutation is seen, regardless of React's render
@@ -12,39 +12,26 @@ import { useSignalStore } from '../store/signals';
 // relay that could otherwise fire the effect multiple times per tick.
 // ═══════════════════════════════════════════════════════════════════════
 
-/** How long the overlay stays visible after the last power-level change. */
+const REGEN_SIGNAL = 'ecu_regen_ac_i_code';
+/** How long the overlay stays visible after the last regen-level change. */
 const VISIBLE_DURATION_MS = 2000;
-
-/** Maps `ecu_forward_ac_i_code` (0–5) to the displayed kW value. No longer
- * needed because mapping is being handled on the ingest side.
- */
-// const POWER_LEVEL_MAP: Record<number, number> = {
-//   0: 50,
-//   1: 100,
-//   2: 150,
-//   3: 200,
-//   4: 250,
-//   5: 275,
-// };
 
 import powerImg from '../assets/powahhh.webp';
 
-export function PowerOverlay() {
+export function RegenOverlay() {
   // ── React state (only for rendering) ────────────────────────────
   const [visible, setVisible] = useState(false);
   const [displayValue, setDisplayValue] = useState(0);
 
   // ── Refs ────────────────────────────────────────────────────────
-  // Tracks the last *known* ecu_forward_ac_i_code so we can detect edges.
+  // Tracks the last *known* REGEN_SIGNAL so we can detect edges.
   const lastLevelRef = useRef<number | null>(null);
   // "Blocker": true while overlay is visible, suppressing re-triggers.
   const showingRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Stable callback so the subscribe effect doesn't need it as a dep.
-  const onPowerChange = useCallback((newLevel: number) => {
-    // const mapped = POWER_LEVEL_MAP[newLevel] ?? newLevel;
-
+  const onRegenChange = useCallback((newLevel: number) => {
     // If the overlay is already up, just bump the displayed number and
     // reset the hide timer — no flash, no duplicate transition.
     if (showingRef.current) {
@@ -74,30 +61,30 @@ export function PowerOverlay() {
   // would report a changed value.  We do our own edge detection here.
   useEffect(() => {
     // Seed the ref with whatever is already in the store on mount.
-    const initial = useSignalStore.getState().signals['ecu_forward_ac_i_code']?.value ?? 0;
+    const initial = useSignalStore.getState().signals[REGEN_SIGNAL]?.value ?? 0;
     lastLevelRef.current = initial;
 
-    console.log('[PowerOverlay] mounted — initial ecu_forward_ac_i_code =', initial);
+    console.log('[RegenOverlay] mounted — initial ecu_regen_ac_i_code =', initial);
 
     // Vanilla Zustand subscribe — fires synchronously after every
     // setSignal call, before React has a chance to batch anything.
     const unsub = useSignalStore.subscribe((state, prevState) => {
-      const newLevel = state.signals['ecu_forward_ac_i_code']?.value;
-      const oldLevel = prevState.signals['ecu_forward_ac_i_code']?.value;
+      const newLevel = state.signals[REGEN_SIGNAL]?.value;
+      const oldLevel = prevState.signals[REGEN_SIGNAL]?.value;
 
       // Not our signal, or value hasn't changed — skip.
       if (newLevel === undefined || newLevel === oldLevel) return;
 
       // Edge detected! Update our ref and fire the overlay logic.
       lastLevelRef.current = newLevel;
-      onPowerChange(newLevel);
+      onRegenChange(newLevel);
     });
 
     return () => {
       unsub();
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [onPowerChange]);
+  }, [onRegenChange]);
 
   return (
     <div
@@ -108,7 +95,7 @@ export function PowerOverlay() {
     >
       <div className="relative flex items-center justify-center">
         {powerImg && (
-          <img src={powerImg} alt="Power level" className="max-h-full max-w-full object-contain" />
+          <img src={powerImg} alt="Regen level" className="max-h-full max-w-full object-contain" />
         )}
         <span className="absolute text-9xl font-black text-white tabular-nums drop-shadow-[0_0_20px_rgba(0,0,0,0.8)]">
           {displayValue}
